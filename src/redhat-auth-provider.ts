@@ -28,7 +28,7 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
     public static async build(): Promise<RedHatAuthenticationProvider> {
         const issuer = await Issuer.discover(ISSUER_METADATA_URL);
         const provider = new RedHatAuthenticationProvider(issuer);
-        // await provider.restoreTokens();
+        await provider.restoreTokens();
         return provider;
     }
     public getSessions(): Promise<vscode.AuthenticationSession[]> {
@@ -84,7 +84,18 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
     }
 
     public async logout(sessionId: string): Promise<void> {
-        //
+        const tokenIndex = this.tokens.findIndex(token => token.sessionId === sessionId);
+		if (tokenIndex > -1) {
+			this.tokens.splice(tokenIndex, 1);
+        }
+        //Remove refresh timer if there is one  
+        const timeout = this.refreshTimers.get(sessionId);
+		if (timeout) {
+			clearTimeout(timeout);
+			this.refreshTimers.delete(sessionId);
+        }
+        vscode.authentication.setPassword(this.id, JSON.stringify(this.tokens));
+        this._onDidChangeSessions.fire({ added: [], removed: [sessionId], changed: [] });
     }
 
     get onDidChangeSessions(): vscode.Event<vscode.AuthenticationProviderAuthenticationSessionsChangeEvent> {
@@ -122,9 +133,15 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
     }
 
     private async refreshToken(token: TokenSet) {
-        const refreshedToken = await this.client.refresh(token);
-        this.addToken(refreshedToken);
-        this._onDidChangeSessions.fire({ added: [], removed: [], changed: [token.session_state!] });
+        try {
+            const refreshedToken = await this.client.refresh(token);
+            this.addToken(refreshedToken);
+            this._onDidChangeSessions.fire({ added: [], removed: [], changed: [token.session_state!] });
+        } catch (error) {
+            // logout from session to remove
+            await this.logout(token.session_state!);
+        }
+
     }
 
     private async restoreTokens(){
