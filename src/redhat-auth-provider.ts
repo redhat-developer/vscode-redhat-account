@@ -6,8 +6,6 @@ import {createServer,startServer } from './authentication-server';
 const ISSUER_METADATA_URL ='https://sso.prod-preview.openshift.io/auth/realms/toolchain-public/';
 const CLIENT_ID = 'crt';
 
-
-
 export class RedHatAuthenticationProvider implements vscode.AuthenticationProvider {
     public readonly id: string = "redhat-account-auth";
     readonly label = "Red Hat OpenShift Service Account";
@@ -23,14 +21,15 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
             response_types: ['code'],
             token_endpoint_auth_method: 'none' 
         });
-        
     }
+
     public static async build(): Promise<RedHatAuthenticationProvider> {
         const issuer = await Issuer.discover(ISSUER_METADATA_URL);
         const provider = new RedHatAuthenticationProvider(issuer);
         await provider.restoreTokens();
         return provider;
     }
+
     public getSessions(): Promise<vscode.AuthenticationSession[]> {
         return Promise.resolve(this.tokens.map( token => this.convertToSession(token)));
     }
@@ -78,7 +77,7 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
         } 
         const token = await this.client.callback(redirect_uri, this.client.callbackParams(callbackResult.req), { code_verifier, nonce });
         this.addToken(token);
-        await callbackResult.res.writeHead(302, { Location: 'https://developer.redhat.com' });
+        await callbackResult.res.writeHead(302, { Location: '/' });
         callbackResult.res.end();
         return Promise.resolve(this.convertToSession(token));
     }
@@ -141,7 +140,6 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
             // logout from session to remove
             await this.logout(token.session_state!);
         }
-
     }
 
     private async restoreTokens(){

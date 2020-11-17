@@ -1,5 +1,7 @@
 import * as http from 'http';
 import * as url from 'url';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface Deferred<T> {
 	resolve: (result: T | Promise<T>) => void;
@@ -40,6 +42,9 @@ export function createServer(nonce: string) {
 					deferredRedirect.resolve({ err, res });
 				}
 				break;
+				case '/':
+					sendFile(res, path.join(__dirname, '../www/success.html'), 'text/html; charset=utf-8');
+					break;
 			case '/callback':
                 deferredCallback.resolve({ req, res });
 				break;
@@ -91,4 +96,20 @@ export async function startServer(server: http.Server): Promise<string> {
 
 	port.then(cancelPortTimer, cancelPortTimer);
 	return port;
+}
+
+function sendFile(res: http.ServerResponse, filepath: string, contentType: string) {
+	fs.readFile(filepath, (err, body) => {
+		if (err) {
+			console.error(err);
+			res.writeHead(404);
+			res.end();
+		} else {
+			res.writeHead(200, {
+				'Content-Length': body.length,
+				'Content-Type': contentType
+			});
+			res.end(body);
+		}
+	});
 }
