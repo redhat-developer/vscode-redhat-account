@@ -10,11 +10,4 @@ suite('Authentication Provider test suite', () => {
         assert.strictEqual(provider.id,"redhat-account-auth");
     });
     
-    test('login  ', async () => {
-        const provider = await RedHatAuthenticationProvider.build();
-        const session = await provider.login([]);
-        assert.strictEqual(session.id, "");
-    });
-    
-    
 });
