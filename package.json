@@ -13,20 +13,25 @@
 	],
 	"activationEvents": [
 		"onCommand:redhat.account.login",
-		"onAuthenticationRequest:redhat"
+		"onCommand:redhat.account.status",
+		"onAuthenticationRequest:redhat-account-auth"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"authentication": [
 			{
 				"label": "Red Hat",
-				"id": "redhat"
+				"id": "redhat-account-auth"
 			}
 		],
 		"commands": [
 			{
 				"command": "redhat.account.login",
-				"title": "Login to Red Hat account"
+				"title": "Red Hat: Login to account"
+			},
+			{
+				"command": "redhat.account.status",
+				"title": "Red Hat: Check login status"
 			}
 		]
 	},
