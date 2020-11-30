@@ -8,16 +8,6 @@ interface Deferred<T> {
 	reject: (reason: any) => void;
 }
 
-interface ISessionInfo {
-	id: string;
-	refreshToken: string;
-	account: {
-		label?: string;
-		displayName?: string,
-		id: string
-	}
-}
-
 export function createServer(nonce: string) {
 
     type RedirectResult = { req: http.IncomingMessage; res: http.ServerResponse; } | { err: any, res: http.ServerResponse };

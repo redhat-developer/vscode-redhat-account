@@ -12,7 +12,6 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:redhat.account.login",
 		"onCommand:redhat.account.status",
 		"onAuthenticationRequest:redhat-account-auth"
 	],
@@ -25,10 +24,6 @@
 			}
 		],
 		"commands": [
-			{
-				"command": "redhat.account.login",
-				"title": "Red Hat: Login to account"
-			},
 			{
 				"command": "redhat.account.status",
 				"title": "Red Hat: Check login status"

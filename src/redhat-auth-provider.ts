@@ -58,14 +58,14 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
         const code_verifier = generators.codeVerifier();
         const code_challenge = generators.codeChallenge(code_verifier);
         const authUrl = this.client.authorizationUrl({
-            scope: 'openid',
+            scope: `openid ${scopes.join(' ')}`,
             resource: 'https://api.openshift.com',
             code_challenge,
             code_challenge_method: 'S256',
             redirect_uri: redirect_uri, 
             nonce: nonce
         });
-        await redirectReq.res.writeHead(302, { Location: authUrl });
+        redirectReq.res.writeHead(302, { Location: authUrl });
         redirectReq.res.end();
 
         const callbackResult =  await callbackPromise;
@@ -77,8 +77,10 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
         } 
         const token = await this.client.callback(redirect_uri, this.client.callbackParams(callbackResult.req), { code_verifier, nonce });
         this.addToken(token);
-        await callbackResult.res.writeHead(302, { Location: '/' });
+        callbackResult.res.writeHead(302, { Location: '/' });
         callbackResult.res.end();
+
+        this._onDidChangeSessions.fire({ added: [token.session_state!], removed: [], changed: [] });
         return Promise.resolve(this.convertToSession(token));
     }
 
@@ -128,6 +130,7 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
 				}
 			}, 1000 * (token.expires_in - 30)));
         }
+        // TODO store scopes for that token too
         vscode.authentication.setPassword(this.id, JSON.stringify(this.tokens));
     }
 
@@ -162,7 +165,7 @@ export class RedHatAuthenticationProvider implements vscode.AuthenticationProvid
                 label: claims.email || claims.preferred_username || 'user',
                 id: claims.sub
             },
-            scopes: []
+            scopes: ['managed_service'] //TODO Get requested scopes instead
         };
     }
 }
