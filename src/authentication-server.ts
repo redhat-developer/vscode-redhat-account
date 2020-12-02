@@ -35,6 +35,9 @@ export function createServer(nonce: string) {
 				case '/':
 					sendFile(res, path.join(__dirname, '../www/success.html'), 'text/html; charset=utf-8');
 					break;
+				case '/auth.css':
+					sendFile(res, path.join(__dirname, '../www/auth.css'), 'text/css; charset=utf-8');
+					break;
 			case '/callback':
                 deferredCallback.resolve({ req, res });
 				break;

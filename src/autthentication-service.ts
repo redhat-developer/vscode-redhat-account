@@ -1,0 +1,457 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import * as vscode from 'vscode';
+import { createServer, startServer } from './authentication-server';
+import { keychain } from './common/keychain';
+import Logger from './common/logger';
+import { Client, Issuer, generators, TokenSet } from 'openid-client';
+import { REDHAT_AUTH_SERVICE_ID } from './common/constants';
+
+const ISSUER_METADATA_URL ='https://sso.prod-preview.openshift.io/auth/realms/toolchain-public/';
+const CLIENT_ID = 'crt';
+
+interface IToken {
+	accessToken?: string; // When unable to refresh due to network problems, the access token becomes undefined
+	expiresIn?: number; // How long access token is valid, in seconds
+	expiresAt?: number; // UNIX epoch time at which token will expire
+	refreshToken: string;
+	account: {
+		label: string;
+		id: string;
+	};
+	scope: string;
+	sessionId: string;
+}
+
+interface IStoredSession {
+	id: string;
+	refreshToken: string;
+	scope: string; // Scopes are alphabetized and joined with a space
+	account: {
+		label?: string;
+		displayName?: string,
+		id: string
+	}
+}
+
+export const onDidChangeSessions = new vscode.EventEmitter<vscode.AuthenticationProviderAuthenticationSessionsChangeEvent>();
+
+export const REFRESH_NETWORK_FAILURE = 'Network failure';
+
+class UriEventHandler extends vscode.EventEmitter<vscode.Uri> implements vscode.UriHandler {
+	public handleUri(uri: vscode.Uri) {
+		this.fire(uri);
+	}
+}
+
+export class RedHatAuthenticationService {
+
+	private _tokens: IToken[] = [];
+	private _refreshTimeouts: Map<string, NodeJS.Timeout> = new Map<string, NodeJS.Timeout>();
+	private _uriHandler: UriEventHandler;
+	private _disposables: vscode.Disposable[] = [];
+	private client : Client;
+
+	constructor(issuer: Issuer<Client>) {
+		this._uriHandler = new UriEventHandler();
+		this._disposables.push(vscode.window.registerUriHandler(this._uriHandler));
+		this.client = new issuer.Client({
+            client_id: CLIENT_ID,
+            response_types: ['code'],
+            token_endpoint_auth_method: 'none' 
+        });
+	}
+
+    public static async build(): Promise<RedHatAuthenticationService> {
+        const issuer = await Issuer.discover(ISSUER_METADATA_URL);
+        const provider = new RedHatAuthenticationService(issuer);
+        return provider;
+    }
+
+	public async initialize(): Promise<void> {
+		const storedData = await keychain.getToken();
+		if (storedData) {
+			try {
+				const sessions = this.parseStoredData(storedData);
+				const refreshes = sessions.map(async session => {
+					if (!session.refreshToken) {
+						return Promise.resolve();
+					}
+
+					try {
+						await this.refreshToken(session.refreshToken, session.scope, session.id);
+					} catch (e) {
+						if (e.message === REFRESH_NETWORK_FAILURE) {
+							const didSucceedOnRetry = await this.handleRefreshNetworkError(session.id, session.refreshToken, session.scope);
+							if (!didSucceedOnRetry) {
+								this._tokens.push({
+									accessToken: undefined,
+									refreshToken: session.refreshToken,
+									account: {
+										label: session.account.label ?? session.account.displayName!,
+										id: session.account.id
+									},
+									scope: session.scope,
+									sessionId: session.id
+								});
+								this.pollForReconnect(session.id, session.refreshToken, session.scope);
+							}
+						} else {
+							await this.logout(session.id);
+						}
+					}
+				});
+
+				await Promise.all(refreshes);
+			} catch (e) {
+				Logger.info('Failed to initialize stored data');
+				await this.clearSessions();
+			}
+		}
+
+		this._disposables.push(vscode.authentication.onDidChangePassword(() => this.checkForUpdates));
+	}
+
+	private parseStoredData(data: string): IStoredSession[] {
+		return JSON.parse(data);
+	}
+
+	private async storeTokenData(): Promise<void> {
+		const serializedData: IStoredSession[] = this._tokens.map(token => {
+			return {
+				id: token.sessionId,
+				refreshToken: token.refreshToken,
+				scope: token.scope,
+				account: token.account
+			};
+		});
+
+		await keychain.setToken(JSON.stringify(serializedData));
+	}
+
+	private async checkForUpdates(): Promise<void> {
+		const addedIds: string[] = [];
+		let removedIds: string[] = [];
+		const storedData = await keychain.getToken();
+		if (storedData) {
+			try {
+				const sessions = this.parseStoredData(storedData);
+				let promises = sessions.map(async session => {
+					const matchesExisting = this._tokens.some(token => token.scope === session.scope && token.sessionId === session.id);
+					if (!matchesExisting && session.refreshToken) {
+						try {
+							await this.refreshToken(session.refreshToken, session.scope, session.id);
+							addedIds.push(session.id);
+						} catch (e) {
+							if (e.message === REFRESH_NETWORK_FAILURE) {
+								// Ignore, will automatically retry on next poll.
+							} else {
+								await this.logout(session.id);
+							}
+						}
+					}
+				});
+
+				promises = promises.concat(this._tokens.map(async token => {
+					const matchesExisting = sessions.some(session => token.scope === session.scope && token.sessionId === session.id);
+					if (!matchesExisting) {
+						await this.logout(token.sessionId);
+						removedIds.push(token.sessionId);
+					}
+				}));
+
+				await Promise.all(promises);
+			} catch (e) {
+				Logger.error(e.message);
+				// if data is improperly formatted, remove all of it and send change event
+				removedIds = this._tokens.map(token => token.sessionId);
+				this.clearSessions();
+			}
+		} else {
+			if (this._tokens.length) {
+				// Log out all, remove all local data
+				removedIds = this._tokens.map(token => token.sessionId);
+				Logger.info('No stored keychain data, clearing local data');
+
+				this._tokens = [];
+
+				this._refreshTimeouts.forEach(timeout => {
+					clearTimeout(timeout);
+				});
+
+				this._refreshTimeouts.clear();
+			}
+		}
+
+		if (addedIds.length || removedIds.length) {
+			onDidChangeSessions.fire({ added: addedIds, removed: removedIds, changed: [] });
+		}
+	}
+
+	private async convertToSession(token: IToken): Promise<vscode.AuthenticationSession> {
+		const resolvedToken = await this.resolveAccessToken(token);
+		return {
+			id: token.sessionId,
+			accessToken: resolvedToken,
+			account: token.account,
+			scopes: token.scope.split(' ')
+		};
+	}
+
+	private async resolveAccessToken(token: IToken): Promise<string> {
+		if (token.accessToken && (!token.expiresAt || token.expiresAt > Date.now())) {
+			token.expiresAt
+				? Logger.info(`Token available from cache, expires in ${token.expiresAt - Date.now()} milliseconds`)
+				: Logger.info('Token available from cache');
+			return Promise.resolve(token.accessToken);
+		}
+
+		try {
+			Logger.info('Token expired or unavailable, trying refresh');
+			const refreshedToken = token;
+			//const refreshedToken = await this.refreshToken(token.refreshToken, token.scope, token.sessionId);
+			if (refreshedToken.accessToken) {
+				return refreshedToken.accessToken;
+			} else {
+				throw new Error();
+			}
+		} catch (e) {
+			throw new Error('Unavailable due to network problems');
+		}
+	}
+
+	get sessions(): Promise<vscode.AuthenticationSession[]> {
+		return Promise.all(this._tokens.map(token => this.convertToSession(token)));
+	}
+
+	public async login(scopes: string[]): Promise<vscode.AuthenticationSession> {
+		Logger.info('Logging in...');
+
+		return new Promise(async (resolve, reject) => {
+			const nonce = generators.nonce();
+			const { server, redirectPromise, callbackPromise }  = createServer(nonce);
+
+			let token: IToken | undefined;
+			try {
+				const port = await startServer(server);
+				vscode.env.openExternal(vscode.Uri.parse(`http://localhost:${port}/signin?nonce=${encodeURIComponent(nonce)}`));
+
+				const redirectReq = await redirectPromise;
+				if ('err' in redirectReq) {
+					const { err, res } = redirectReq;
+					res.writeHead(302, { Location: `/?error=${encodeURIComponent(err && err.message || 'Unknown error')}` });
+					res.end();
+					throw err;
+				}
+
+				const host = redirectReq.req.headers.host || '';
+				const updatedPortStr = (/^[^:]+:(\d+)$/.exec(Array.isArray(host) ? host[0] : host) || [])[1];
+				const updatedPort = updatedPortStr ? parseInt(updatedPortStr, 10) : port;
+				const redirect_uri = `http://localhost:${updatedPort}/callback`;
+				
+				const code_verifier = generators.codeVerifier();
+				const code_challenge = generators.codeChallenge(code_verifier);
+
+				const scope = scopes.join(' ');
+
+				const authUrl = this.client.authorizationUrl({
+					scope: `openid ${scope}`,
+					resource: 'https://api.openshift.com',
+					code_challenge,
+					code_challenge_method: 'S256',
+					redirect_uri: redirect_uri, 
+					nonce: nonce
+				});
+			
+				redirectReq.res.writeHead(302, { Location: authUrl });
+				redirectReq.res.end();
+		
+				const callbackResult =  await callbackPromise;
+
+				if('err' in callbackResult){
+					callbackResult.res.writeHead(302, { Location: `/?error=${encodeURIComponent(callbackResult.err && callbackResult.err.message || 'Unknown error')}` });
+					callbackResult.res.end();
+					throw callbackResult.err;
+				} 
+				const tokenSet = await this.client.callback(redirect_uri, this.client.callbackParams(callbackResult.req), { code_verifier, nonce });
+				
+				callbackResult.res.writeHead(302, { Location: '/' });
+				callbackResult.res.end();
+
+				const token = this.convertToken(tokenSet, scope);
+				
+				this.setToken(token, scope);
+				Logger.info('Login successful');
+				const session = await this.convertToSession(token);
+				
+				resolve(session);
+
+			} catch (e) {
+				Logger.error(e.message);
+				// If the error was about starting the server, try directly hitting the login endpoint instead
+				if (e.message === 'Error listening to server' || e.message === 'Closed' || e.message === 'Timeout waiting for port') {
+					//await this.loginWithoutLocalServer(scope);
+				}
+
+				reject(e.message);
+			} finally {
+				setTimeout(() => {
+					server.close();
+				}, 5000);
+			}
+		});
+    }
+
+	public dispose(): void {
+		this._disposables.forEach(disposable => disposable.dispose());
+		this._disposables = [];
+	}
+	
+	private async setToken(token: IToken, scope: string): Promise<void> {
+		const existingTokenIndex = this._tokens.findIndex(t => t.sessionId === token.sessionId);
+		if (existingTokenIndex > -1) {
+			this._tokens.splice(existingTokenIndex, 1, token);
+		} else {
+			this._tokens.push(token);
+		}
+
+		this.clearSessionTimeout(token.sessionId);
+
+		if (token.expiresIn) {
+			this._refreshTimeouts.set(token.sessionId, setTimeout(async () => {
+				try {
+					await this.refreshToken(token.refreshToken, scope, token.sessionId);
+					onDidChangeSessions.fire({ added: [], removed: [], changed: [token.sessionId] });
+				} catch (e) {
+					if (e.message === REFRESH_NETWORK_FAILURE) {
+						const didSucceedOnRetry = await this.handleRefreshNetworkError(token.sessionId, token.refreshToken, scope);
+						if (!didSucceedOnRetry) {
+							this.pollForReconnect(token.sessionId, token.refreshToken, token.scope);
+						}
+					} else {
+						await this.logout(token.sessionId);
+						onDidChangeSessions.fire({ added: [], removed: [token.sessionId], changed: [] });
+					}
+				}
+			}, 1000 * (token.expiresIn - 30)));
+		}
+
+		this.storeTokenData();
+	}
+
+	private convertToken(tokenSet: TokenSet, scope: string, existingId?: string): IToken {
+		let claims = tokenSet.claims();
+		return {
+			expiresIn: tokenSet.expires_in,
+			expiresAt: tokenSet.expires_in ? Date.now() + tokenSet.expires_in * 1000 : undefined,
+			accessToken: tokenSet.access_token,
+			refreshToken: tokenSet.refresh_token!,
+			sessionId: existingId || tokenSet.session_state!,
+			scope: scope,
+			account: {
+				id: claims.sub,
+				label: claims.email || claims.preferred_username || 'user@example.com'
+			}
+		};
+	}
+
+	private async refreshToken(refreshToken: string, scope: string, sessionId: string): Promise<IToken> {
+		Logger.info('Refreshing token...');
+		try {
+			const refreshedToken = await this.client.refresh(refreshToken);
+			const token = this.convertToken(refreshedToken, scope, sessionId);
+			this.setToken(token, scope);
+			Logger.info('Token refresh success');
+			return token;
+		} catch (error) {
+			Logger.error(`Refreshing token failed: ${error}`);
+			vscode.window.showErrorMessage("You have been signed out because reading stored authentication information failed.");
+			throw new Error('Refreshing token failed');
+		}
+	}
+
+	private clearSessionTimeout(sessionId: string): void {
+		const timeout = this._refreshTimeouts.get(sessionId);
+		if (timeout) {
+			clearTimeout(timeout);
+			this._refreshTimeouts.delete(sessionId);
+		}
+	}
+
+	private removeInMemorySessionData(sessionId: string) {
+		const tokenIndex = this._tokens.findIndex(token => token.sessionId === sessionId);
+		if (tokenIndex > -1) {
+			this._tokens.splice(tokenIndex, 1);
+		}
+
+		this.clearSessionTimeout(sessionId);
+	}
+
+	private pollForReconnect(sessionId: string, refreshToken: string, scope: string): void {
+		this.clearSessionTimeout(sessionId);
+
+		this._refreshTimeouts.set(sessionId, setTimeout(async () => {
+			try {
+				await this.refreshToken(refreshToken, scope, sessionId);
+			} catch (e) {
+				this.pollForReconnect(sessionId, refreshToken, scope);
+			}
+		}, 1000 * 60 * 30));
+	}
+
+	private handleRefreshNetworkError(sessionId: string, refreshToken: string, scope: string, attempts: number = 1): Promise<boolean> {
+		return new Promise((resolve, _) => {
+			if (attempts === 3) {
+				Logger.error('Token refresh failed after 3 attempts');
+				return resolve(false);
+			}
+
+			if (attempts === 1) {
+				const token = this._tokens.find(token => token.sessionId === sessionId);
+				if (token) {
+					token.accessToken = undefined;
+					onDidChangeSessions.fire({ added: [], removed: [], changed: [token.sessionId] });
+				}
+			}
+
+			const delayBeforeRetry = 5 * attempts * attempts;
+
+			this.clearSessionTimeout(sessionId);
+
+			this._refreshTimeouts.set(sessionId, setTimeout(async () => {
+				try {
+					await this.refreshToken(refreshToken, scope, sessionId);
+					return resolve(true);
+				} catch (e) {
+					return resolve(await this.handleRefreshNetworkError(sessionId, refreshToken, scope, attempts + 1));
+				}
+			}, 1000 * delayBeforeRetry));
+		});
+	}
+
+	public async logout(sessionId: string) {
+		Logger.info(`Logging out of session '${sessionId}'`);
+		this.removeInMemorySessionData(sessionId);
+
+		if (this._tokens.length === 0) {
+			await keychain.deleteToken();
+		} else {
+			this.storeTokenData();
+		}
+	}
+
+	public async clearSessions() {
+		Logger.info('Logging out of all sessions');
+		this._tokens = [];
+		await keychain.deleteToken();
+
+		this._refreshTimeouts.forEach(timeout => {
+			clearTimeout(timeout);
+		});
+
+		this._refreshTimeouts.clear();
+	}
+}

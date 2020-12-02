@@ -1,15 +1,20 @@
 {
 	"name": "vscode-redhat-account",
-	"displayName": "Red Hat OpenShift Services Account",
-	"description": "Common Red Hat OpenShift Services account login extension",
+	"displayName": "Red Hat Account",
+	"description": "Red Hat Services account login extension",
 	"version": "0.0.1",
 	"publisher": "redhat",
 	"engines": {
-		"vscode": "^1.41.0"
+		"vscode": "^1.52.0"
 	},
 	"enableProposedApi": true,
 	"categories": [
 		"Other"
+	],
+	"extensionKind": [
+		"ui",
+		"workspace",
+		"web"
 	],
 	"activationEvents": [
 		"onCommand:redhat.account.status",
@@ -39,8 +44,7 @@
 		"test": "node ./out/test/runTest.js"
 	},
 	"dependencies": {
-		"openid-client": "^4.2.1",
-		"randombytes": "2.1.0"
+		"openid-client": "^4.2.1"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.1",
