@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as request from 'request-promise';
+import axios from 'axios';
 import { RedHatAuthenticationService, onDidChangeSessions } from './authentication-service';
 import { StagingConfig, StagingMasConfig } from './common/configuration';
 import { getTelemetryService, TelemetryService } from "@redhat-developer/vscode-redhat-telemetry";
@@ -105,17 +105,15 @@ export async function activate(context: vscode.ExtensionContext) {
 	return;
 }
 async function getKafkaServer(token: string): Promise<string|null> {
-	const options: request.OptionsWithUri = {
-		port: 443,
-		uri: `${config.apiUrl}/api/managed-services-api/v1/kafkas`,
+	let requestConfig = {
 		headers: {
 			'Authorization': `Bearer ${token}`,
 			'Accept': 'application/json'
 		}
 	  }
 	  try {
-		const response =  await request(options);
-		const kafkas = JSON.parse(response);
+		const response = await axios.get(`${config.apiUrl}/api/managed-services-api/v1/kafkas`, requestConfig);
+		const kafkas = response.data;
 		return kafkas.items[0].bootstrapServerHost;
 	  } catch (err) {
 		console.log(err);
