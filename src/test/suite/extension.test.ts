@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { REDHAT_AUTH_SERVICE_ID} from '../../common/constants'
 
 suite('Extension Test Suite', () => {
 

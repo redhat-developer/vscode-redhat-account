@@ -5,15 +5,16 @@
 
 import * as vscode from 'vscode';
 import Logger from './logger';
-import { REDHAT_AUTH_SERVICE_ID } from './constants';
 
 export class Keychain {
+	constructor(private serviceId:string, private context: vscode.ExtensionContext) { }
 	async setToken(token: string): Promise<void> {
 		try {
-			return await vscode.authentication.setPassword(REDHAT_AUTH_SERVICE_ID, token);
+			Logger.info(`Storing token for ${this.serviceId}`);
+			return await this.context.secrets.store(this.serviceId, token);
 		} catch (e) {
 			// Ignore
-			Logger.error(`Setting Red Hat token failed: ${e}`);
+			Logger.error(`Storing ${this.serviceId} token failed: ${e}`);
 			const troubleshooting = "Troubleshooting Guide";
 			const result = await vscode.window.showErrorMessage(`Writing login information to the keychain failed with error '${e.message}'.`, troubleshooting);
 			if (result === troubleshooting) {
@@ -24,23 +25,22 @@ export class Keychain {
 
 	async getToken(): Promise<string | null | undefined> {
 		try {
-			return await vscode.authentication.getPassword(REDHAT_AUTH_SERVICE_ID);
+			return await this.context.secrets.get(this.serviceId);
 		} catch (e) {
 			// Ignore
-			Logger.error(`Getting Red Hat token failed: ${e}`);
+			Logger.error(`Getting ${this.serviceId} token failed: ${e}`);
 			return Promise.resolve(undefined);
 		}
 	}
 
 	async deleteToken(): Promise<void> {
 		try {
-			return await vscode.authentication.deletePassword(REDHAT_AUTH_SERVICE_ID);
+			Logger.info(`Deleting token for ${this.serviceId}`);
+			return await this.context.secrets.delete(this.serviceId);
 		} catch (e) {
 			// Ignore
-			Logger.error(`Deleting Red Hat token failed: ${e}`);
+			Logger.error(`Deleting ${this.serviceId} token failed: ${e}`);
 			return Promise.resolve(undefined);
 		}
 	}
 }
-
-export const keychain = new Keychain();

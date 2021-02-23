@@ -2,15 +2,16 @@ import * as http from 'http';
 import * as url from 'url';
 import * as fs from 'fs';
 import * as path from 'path';
+import { AuthConfig } from './common/configuration';
 
 interface Deferred<T> {
 	resolve: (result: T | Promise<T>) => void;
 	reject: (reason: any) => void;
 }
 
-export function createServer(nonce: string) {
+export function createServer(config:AuthConfig, nonce: string) {
 
-    type RedirectResult = { req: http.IncomingMessage; res: http.ServerResponse; } | { err: any, res: http.ServerResponse };
+	type RedirectResult = { req: http.IncomingMessage; res: http.ServerResponse; } | { err: any, res: http.ServerResponse };
 	let deferredRedirect: Deferred<RedirectResult>;
 	const redirectPromise = new Promise<RedirectResult>((resolve, reject) => deferredRedirect = { resolve, reject });
 
@@ -19,10 +20,11 @@ export function createServer(nonce: string) {
 
 
 
-    const server = http.createServer(function (req, res) {
+	const server = http.createServer(function (req, res) {
 		const reqUrl = url.parse(req.url!, /* parseQueryString */ true);
+		console.log(`Received ${reqUrl.pathname}`);
 		switch (reqUrl.pathname) {
-            case '/signin':
+			case '/signin':
 				// eslint-disable-next-line no-case-declarations
 				const receivedNonce = ((reqUrl.query.nonce as string) || '').replace(/ /g, '+');
 				if (receivedNonce === nonce) {
@@ -32,22 +34,22 @@ export function createServer(nonce: string) {
 					deferredRedirect.resolve({ err, res });
 				}
 				break;
-				case '/':
-					sendFile(res, path.join(__dirname, '../www/success.html'), 'text/html; charset=utf-8');
-					break;
-				case '/auth.css':
-					sendFile(res, path.join(__dirname, '../www/auth.css'), 'text/css; charset=utf-8');
-					break;
-			case '/callback':
-                deferredCallback.resolve({ req, res });
+			case '/':
+				sendFile(res, path.join(__dirname, '../www/success.html'), 'text/html; charset=utf-8');
+				break;
+			case '/auth.css':
+				sendFile(res, path.join(__dirname, '../www/auth.css'), 'text/css; charset=utf-8');
+				break;
+			case `/${config.callbackPath}`:
+				deferredCallback.resolve({ req, res });
 				break;
 			default:
 				res.writeHead(404);
 				res.end();
 				break;
 		}
-    });
-    return {server, redirectPromise, callbackPromise};
+	});
+	return { server, redirectPromise, callbackPromise };
 
 
 }
@@ -65,15 +67,15 @@ export async function startServer(server: http.Server): Promise<string> {
 		}, 5000);
 
 		server.on('listening', () => {
-            const address = server.address();
-            if (typeof (address) === 'undefined' || address === null) {
-                reject(new Error('adress is null or undefined'));
-            }else 
-			if (typeof address === 'string') {
-				resolve(address);
-			} else {
-				resolve(address.port.toString());
-			}
+			const address = server.address();
+			if (typeof (address) === 'undefined' || address === null) {
+				reject(new Error('adress is null or undefined'));
+			} else
+				if (typeof address === 'string') {
+					resolve(address);
+				} else {
+					resolve(address.port.toString());
+				}
 		});
 
 		server.on('error', _ => {

@@ -5,25 +5,30 @@
 
 import * as vscode from 'vscode';
 import { createServer, startServer } from './authentication-server';
-import { keychain } from './common/keychain';
+import { Keychain } from './common/keychain';
 import Logger from './common/logger';
 import { Client, Issuer, generators, TokenSet } from 'openid-client';
-import { REDHAT_AUTH_SERVICE_ID } from './common/constants';
-
-const ISSUER_METADATA_URL ='https://sso.prod-preview.openshift.io/auth/realms/toolchain-public/';
-const CLIENT_ID = 'crt';
+import { AuthConfig } from './common/configuration';
 
 interface IToken {
 	accessToken?: string; // When unable to refresh due to network problems, the access token becomes undefined
+	idToken?: string; // depending on the scopes can be either supplied or empty
+
 	expiresIn?: number; // How long access token is valid, in seconds
 	expiresAt?: number; // UNIX epoch time at which token will expire
 	refreshToken: string;
+
 	account: {
 		label: string;
 		id: string;
 	};
 	scope: string;
 	sessionId: string;
+}
+
+export interface IResolvedToken {
+	accessToken: string;
+	idToken?: string;
 }
 
 interface IStoredSession {
@@ -51,28 +56,36 @@ export class RedHatAuthenticationService {
 
 	private _tokens: IToken[] = [];
 	private _refreshTimeouts: Map<string, NodeJS.Timeout> = new Map<string, NodeJS.Timeout>();
-	private _uriHandler: UriEventHandler;
+	//private _uriHandler: UriEventHandler;
 	private _disposables: vscode.Disposable[] = [];
-	private client : Client;
+	private client: Client;
+	private keychain: Keychain;
+	private context: vscode.ExtensionContext;
+	private config: AuthConfig;
 
-	constructor(issuer: Issuer<Client>) {
-		this._uriHandler = new UriEventHandler();
-		this._disposables.push(vscode.window.registerUriHandler(this._uriHandler));
+	constructor(issuer: Issuer<Client>, context: vscode.ExtensionContext, config: AuthConfig) {
+		//this._uriHandler = new UriEventHandler();
+		//this._disposables.push(vscode.window.registerUriHandler(this._uriHandler));
+		this.config = config;
 		this.client = new issuer.Client({
-            client_id: CLIENT_ID,
-            response_types: ['code'],
-            token_endpoint_auth_method: 'none' 
-        });
+			client_id: config.clientId,
+			response_types: ['code'],
+			token_endpoint_auth_method: 'none'
+		});
+		this.context = context;
+
+		this.keychain = new Keychain(config.serviceId, context);
 	}
 
-    public static async build(): Promise<RedHatAuthenticationService> {
-        const issuer = await Issuer.discover(ISSUER_METADATA_URL);
-        const provider = new RedHatAuthenticationService(issuer);
-        return provider;
-    }
+	public static async build(context: vscode.ExtensionContext, config: AuthConfig): Promise<RedHatAuthenticationService> {
+		const issuer = await Issuer.discover(config.authUrl);
+
+		const provider = new RedHatAuthenticationService(issuer, context, config);
+		return provider;
+	}
 
 	public async initialize(): Promise<void> {
-		const storedData = await keychain.getToken();
+		const storedData = await this.keychain.getToken();
 		if (storedData) {
 			try {
 				const sessions = this.parseStoredData(storedData);
@@ -100,7 +113,7 @@ export class RedHatAuthenticationService {
 								this.pollForReconnect(session.id, session.refreshToken, session.scope);
 							}
 						} else {
-							await this.logout(session.id);
+							await this.removeSession(session.id);
 						}
 					}
 				});
@@ -112,7 +125,10 @@ export class RedHatAuthenticationService {
 			}
 		}
 
-		this._disposables.push(vscode.authentication.onDidChangePassword(() => this.checkForUpdates));
+		this._disposables.push(this.context.secrets.onDidChange(() => {
+			Logger.info('Secrets changed, checking for token updates');
+			this.checkForUpdates();
+		}));
 	}
 
 	private parseStoredData(data: string): IStoredSession[] {
@@ -129,13 +145,13 @@ export class RedHatAuthenticationService {
 			};
 		});
 
-		await keychain.setToken(JSON.stringify(serializedData));
+		await this.keychain.setToken(JSON.stringify(serializedData));
 	}
 
 	private async checkForUpdates(): Promise<void> {
-		const addedIds: string[] = [];
-		let removedIds: string[] = [];
-		const storedData = await keychain.getToken();
+		const added: vscode.AuthenticationSession[] = [];
+		let removed: vscode.AuthenticationSession[] = [];
+		const storedData = await this.keychain.getToken();
 		if (storedData) {
 			try {
 				const sessions = this.parseStoredData(storedData);
@@ -143,13 +159,13 @@ export class RedHatAuthenticationService {
 					const matchesExisting = this._tokens.some(token => token.scope === session.scope && token.sessionId === session.id);
 					if (!matchesExisting && session.refreshToken) {
 						try {
-							await this.refreshToken(session.refreshToken, session.scope, session.id);
-							addedIds.push(session.id);
+							const token = await this.refreshToken(session.refreshToken, session.scope, session.id);
+							added.push(this.convertToSessionSync(token));
 						} catch (e) {
 							if (e.message === REFRESH_NETWORK_FAILURE) {
 								// Ignore, will automatically retry on next poll.
 							} else {
-								await this.logout(session.id);
+								await this.removeSession(session.id);
 							}
 						}
 					}
@@ -158,8 +174,8 @@ export class RedHatAuthenticationService {
 				promises = promises.concat(this._tokens.map(async token => {
 					const matchesExisting = sessions.some(session => token.scope === session.scope && token.sessionId === session.id);
 					if (!matchesExisting) {
-						await this.logout(token.sessionId);
-						removedIds.push(token.sessionId);
+						await this.removeSession(token.sessionId);
+						removed.push(this.convertToSessionSync(token));
 					}
 				}));
 
@@ -167,13 +183,13 @@ export class RedHatAuthenticationService {
 			} catch (e) {
 				Logger.error(e.message);
 				// if data is improperly formatted, remove all of it and send change event
-				removedIds = this._tokens.map(token => token.sessionId);
+				removed = this._tokens.map(this.convertToSessionSync);
 				this.clearSessions();
 			}
 		} else {
 			if (this._tokens.length) {
 				// Log out all, remove all local data
-				removedIds = this._tokens.map(token => token.sessionId);
+				removed = this._tokens.map(this.convertToSessionSync);
 				Logger.info('No stored keychain data, clearing local data');
 
 				this._tokens = [];
@@ -186,35 +202,55 @@ export class RedHatAuthenticationService {
 			}
 		}
 
-		if (addedIds.length || removedIds.length) {
-			onDidChangeSessions.fire({ added: addedIds, removed: removedIds, changed: [] });
+		if (added.length || removed.length) {
+			onDidChangeSessions.fire({ added: added, removed: removed, changed: [] });
 		}
 	}
 
-	private async convertToSession(token: IToken): Promise<vscode.AuthenticationSession> {
-		const resolvedToken = await this.resolveAccessToken(token);
+	/**
+	 * Return a session object without checking for expiry and potentially refreshing.
+	 * @param token The token information.
+	 */
+	private convertToSessionSync(token: IToken): vscode.AuthenticationSession {
 		return {
 			id: token.sessionId,
-			accessToken: resolvedToken,
+			accessToken: token.accessToken!,
+			//idToken: token.idToken,
 			account: token.account,
 			scopes: token.scope.split(' ')
 		};
 	}
 
-	private async resolveAccessToken(token: IToken): Promise<string> {
+	private async convertToSession(token: IToken): Promise<vscode.AuthenticationSession> {
+		const resolvedTokens = await this.resolveAccessAndIdTokens(token);
+		return {
+			id: token.sessionId,
+			accessToken: resolvedTokens.accessToken,
+			//idToken: resolvedTokens.idToken,
+			account: token.account,
+			scopes: token.scope.split(' ')
+		};
+	}
+
+	private async resolveAccessAndIdTokens(token: IToken): Promise<IResolvedToken> {
 		if (token.accessToken && (!token.expiresAt || token.expiresAt > Date.now())) {
 			token.expiresAt
 				? Logger.info(`Token available from cache, expires in ${token.expiresAt - Date.now()} milliseconds`)
 				: Logger.info('Token available from cache');
-			return Promise.resolve(token.accessToken);
+			return Promise.resolve({
+				accessToken: token.accessToken,
+				idToken: token.idToken
+			});
 		}
 
 		try {
 			Logger.info('Token expired or unavailable, trying refresh');
-			const refreshedToken = token;
-			//const refreshedToken = await this.refreshToken(token.refreshToken, token.scope, token.sessionId);
+			const refreshedToken = await this.refreshToken(token.refreshToken, token.scope, token.sessionId);
 			if (refreshedToken.accessToken) {
-				return refreshedToken.accessToken;
+				return {
+					accessToken: refreshedToken.accessToken,
+					idToken: refreshedToken.idToken
+				};
 			} else {
 				throw new Error();
 			}
@@ -227,12 +263,24 @@ export class RedHatAuthenticationService {
 		return Promise.all(this._tokens.map(token => this.convertToSession(token)));
 	}
 
-	public async login(scopes: string[]): Promise<vscode.AuthenticationSession> {
+	getSessions(scopes?: string[]): Promise<vscode.AuthenticationSession[]> {
+		if (!scopes) {
+			return this.sessions;
+		}
+
+		const orderedScopes = scopes.sort().join(' ');
+		const matchingTokens = this._tokens.filter(token => token.scope === orderedScopes);
+		return Promise.all(matchingTokens.map(token => this.convertToSession(token)));
+	}
+
+
+	public async createSession(scopes: string): Promise<vscode.AuthenticationSession> {
 		Logger.info('Logging in...');
 
+		// eslint-disable-next-line no-async-promise-executor
 		return new Promise(async (resolve, reject) => {
 			const nonce = generators.nonce();
-			const { server, redirectPromise, callbackPromise }  = createServer(nonce);
+			const { server, redirectPromise, callbackPromise } = createServer(this.config, nonce);
 
 			let token: IToken | undefined;
 			try {
@@ -250,43 +298,43 @@ export class RedHatAuthenticationService {
 				const host = redirectReq.req.headers.host || '';
 				const updatedPortStr = (/^[^:]+:(\d+)$/.exec(Array.isArray(host) ? host[0] : host) || [])[1];
 				const updatedPort = updatedPortStr ? parseInt(updatedPortStr, 10) : port;
-				const redirect_uri = `http://localhost:${updatedPort}/callback`;
-				
+
+				const redirect_uri = `http://localhost:${updatedPort}/${this.config.callbackPath}`;
 				const code_verifier = generators.codeVerifier();
 				const code_challenge = generators.codeChallenge(code_verifier);
 
-				const scope = scopes.join(' ');
+				const scope = scopes;
 
 				const authUrl = this.client.authorizationUrl({
 					scope: `openid ${scope}`,
-					resource: 'https://api.openshift.com',
+					resource: this.config.apiUrl,
 					code_challenge,
 					code_challenge_method: 'S256',
-					redirect_uri: redirect_uri, 
+					redirect_uri: redirect_uri,
 					nonce: nonce
 				});
-			
+
 				redirectReq.res.writeHead(302, { Location: authUrl });
 				redirectReq.res.end();
-		
-				const callbackResult =  await callbackPromise;
 
-				if('err' in callbackResult){
+				const callbackResult = await callbackPromise;
+
+				if ('err' in callbackResult) {
 					callbackResult.res.writeHead(302, { Location: `/?error=${encodeURIComponent(callbackResult.err && callbackResult.err.message || 'Unknown error')}` });
 					callbackResult.res.end();
 					throw callbackResult.err;
-				} 
+				}
 				const tokenSet = await this.client.callback(redirect_uri, this.client.callbackParams(callbackResult.req), { code_verifier, nonce });
-				
-				callbackResult.res.writeHead(302, { Location: '/' });
+				const token = this.convertToken(tokenSet, scope);
+
+				callbackResult.res.writeHead(302, { Location: `/?login=${encodeURIComponent(token.account.label)}` });
 				callbackResult.res.end();
 
-				const token = this.convertToken(tokenSet, scope);
-				
+
 				this.setToken(token, scope);
 				Logger.info('Login successful');
 				const session = await this.convertToSession(token);
-				
+
 				resolve(session);
 
 			} catch (e) {
@@ -303,13 +351,13 @@ export class RedHatAuthenticationService {
 				}, 5000);
 			}
 		});
-    }
+	}
 
 	public dispose(): void {
 		this._disposables.forEach(disposable => disposable.dispose());
 		this._disposables = [];
 	}
-	
+
 	private async setToken(token: IToken, scope: string): Promise<void> {
 		const existingTokenIndex = this._tokens.findIndex(t => t.sessionId === token.sessionId);
 		if (existingTokenIndex > -1) {
@@ -323,8 +371,8 @@ export class RedHatAuthenticationService {
 		if (token.expiresIn) {
 			this._refreshTimeouts.set(token.sessionId, setTimeout(async () => {
 				try {
-					await this.refreshToken(token.refreshToken, scope, token.sessionId);
-					onDidChangeSessions.fire({ added: [], removed: [], changed: [token.sessionId] });
+					const refreshedToken = await this.refreshToken(token.refreshToken, scope, token.sessionId);
+					onDidChangeSessions.fire({ added: [], removed: [], changed: [this.convertToSessionSync(refreshedToken)] });
 				} catch (e) {
 					if (e.message === REFRESH_NETWORK_FAILURE) {
 						const didSucceedOnRetry = await this.handleRefreshNetworkError(token.sessionId, token.refreshToken, scope);
@@ -332,8 +380,8 @@ export class RedHatAuthenticationService {
 							this.pollForReconnect(token.sessionId, token.refreshToken, token.scope);
 						}
 					} else {
-						await this.logout(token.sessionId);
-						onDidChangeSessions.fire({ added: [], removed: [token.sessionId], changed: [] });
+						await this.removeSession(token.sessionId);
+						onDidChangeSessions.fire({ added: [], removed: [this.convertToSessionSync(token)], changed: [] });
 					}
 				}
 			}, 1000 * (token.expiresIn - 30)));
@@ -343,7 +391,8 @@ export class RedHatAuthenticationService {
 	}
 
 	private convertToken(tokenSet: TokenSet, scope: string, existingId?: string): IToken {
-		let claims = tokenSet.claims();
+		//console.log(`Token:\n${JSON.stringify(tokenSet)}`);
+		const claims = tokenSet.claims();
 		return {
 			expiresIn: tokenSet.expires_in,
 			expiresAt: tokenSet.expires_in ? Date.now() + tokenSet.expires_in * 1000 : undefined,
@@ -353,7 +402,7 @@ export class RedHatAuthenticationService {
 			scope: scope,
 			account: {
 				id: claims.sub,
-				label: claims.email || claims.preferred_username || 'user@example.com'
+				label: claims.preferred_username || claims.email || 'user@example.com'
 			}
 		};
 	}
@@ -381,13 +430,16 @@ export class RedHatAuthenticationService {
 		}
 	}
 
-	private removeInMemorySessionData(sessionId: string) {
+	private removeInMemorySessionData(sessionId: string): IToken | undefined {
 		const tokenIndex = this._tokens.findIndex(token => token.sessionId === sessionId);
+		let token: IToken | undefined;
 		if (tokenIndex > -1) {
+			token = this._tokens[tokenIndex];
 			this._tokens.splice(tokenIndex, 1);
 		}
 
 		this.clearSessionTimeout(sessionId);
+		return token;
 	}
 
 	private pollForReconnect(sessionId: string, refreshToken: string, scope: string): void {
@@ -402,7 +454,7 @@ export class RedHatAuthenticationService {
 		}, 1000 * 60 * 30));
 	}
 
-	private handleRefreshNetworkError(sessionId: string, refreshToken: string, scope: string, attempts: number = 1): Promise<boolean> {
+	private handleRefreshNetworkError(sessionId: string, refreshToken: string, scope: string, attempts = 1): Promise<boolean> {
 		return new Promise((resolve, _) => {
 			if (attempts === 3) {
 				Logger.error('Token refresh failed after 3 attempts');
@@ -413,7 +465,7 @@ export class RedHatAuthenticationService {
 				const token = this._tokens.find(token => token.sessionId === sessionId);
 				if (token) {
 					token.accessToken = undefined;
-					onDidChangeSessions.fire({ added: [], removed: [], changed: [token.sessionId] });
+					onDidChangeSessions.fire({ added: [], removed: [], changed: [this.convertToSessionSync(token)] });
 				}
 			}
 
@@ -432,21 +484,25 @@ export class RedHatAuthenticationService {
 		});
 	}
 
-	public async logout(sessionId: string) {
+	public async removeSession(sessionId: string): Promise<vscode.AuthenticationSession | undefined> {
 		Logger.info(`Logging out of session '${sessionId}'`);
-		this.removeInMemorySessionData(sessionId);
-
+		const token = this.removeInMemorySessionData(sessionId);
+		let session: vscode.AuthenticationSession | undefined;
+		if (token) {
+			session = this.convertToSessionSync(token);
+		}
 		if (this._tokens.length === 0) {
-			await keychain.deleteToken();
+			await this.keychain.deleteToken();
 		} else {
 			this.storeTokenData();
 		}
+		return session;
 	}
 
 	public async clearSessions() {
 		Logger.info('Logging out of all sessions');
 		this._tokens = [];
-		await keychain.deleteToken();
+		await this.keychain.deleteToken();
 
 		this._refreshTimeouts.forEach(timeout => {
 			clearTimeout(timeout);
