@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import axios from 'axios';
 import { RedHatAuthenticationService, onDidChangeSessions } from './authentication-service';
-import { StagingConfig, StagingMasConfig } from './common/configuration';
+import { getAuthConfig, getMASAuthConfig } from './common/configuration';
 import { getTelemetryService, TelemetryService } from "@redhat-developer/vscode-redhat-telemetry";
 
-const config = StagingConfig;
-const masConfig = StagingMasConfig;
+const config = getAuthConfig();
+const masConfig = getMASAuthConfig();
 
 export async function activate(context: vscode.ExtensionContext) {
 	const loginService = await RedHatAuthenticationService.build(context, config);
@@ -14,32 +14,39 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(loginService);
 
 	context.subscriptions.push(vscode.commands.registerCommand('redhat.account.status', async () => {
-		return vscode.authentication.getSession(config.serviceId, ['openid']).then(async session => {
-			if (session) {
-				vscode.window.showInformationMessage(`You're logged in as ${session?.account.label}`);
-				const server = await getKafkaServer(session.accessToken);
-				vscode.window.showInformationMessage(`Your Kafka Cluster: ${server}`);
-			} else {
-				vscode.window.showWarningMessage(`You need to log in your Red Hat account`);
-			}
-		});
+		try {
+			return vscode.authentication.getSession(config.serviceId, ['openid']).then(async session => {
+				if (session) {
+					vscode.window.showInformationMessage(`You're logged in Red Hat as ${session?.account.label}`);
+				} else {
+					vscode.window.showWarningMessage(`You need to log in your Red Hat account`);
+				}
+			});
+		} catch (error) {
+			console.log('Error in redhat.account.status:', error);
+			vscode.window.showErrorMessage(error);
+		}
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('redhat.mas.account.status', async () => {
-		return vscode.authentication.getSession(masConfig.serviceId, ['openid']).then(async session => {
-			if (session) {
-				vscode.window.showInformationMessage(`You're logged in as ${session?.account.label}`);
-				vscode.window.showInformationMessage(`Your MAS access token: ${session.accessToken}`);
-			} else {
-				vscode.window.showWarningMessage(`You need to log in your Red Hat MAS account`);
-			}
-		});
+		try {
+			return vscode.authentication.getSession(masConfig.serviceId, ['openid'], { createIfNone: true }).then(async session => {
+				if (session) {
+					vscode.window.showInformationMessage(`You're logged in Red Hat MAS as ${session?.account.label}`);
+				} else {
+					vscode.window.showWarningMessage(`You need to log in your Red Hat MAS account`);
+				}
+			});
+		} catch (error) {
+			console.log('Error in redhat.mas.account.status:', error);
+			vscode.window.showErrorMessage(error);
+		}
 	}));
 
 	await loginService.initialize();
 
 	context.subscriptions.push(vscode.authentication.registerAuthenticationProvider(config.serviceId,
 		'Red Hat', {
-			onDidChangeSessions: onDidChangeSessions.event,
+		onDidChangeSessions: onDidChangeSessions.event,
 		getSessions: (scopes: string[]) => loginService.getSessions(scopes),
 		createSession: async (scopes: string[]) => {
 			try {
@@ -64,12 +71,13 @@ export async function activate(context: vscode.ExtensionContext) {
 				throw error;
 			}
 		}
-	}));
-	
-	const masLoginService = await RedHatAuthenticationService.build(context, config);
+	}
+	));
+
+	const masLoginService = await RedHatAuthenticationService.build(context, masConfig);
 	await masLoginService.initialize();
 	context.subscriptions.push(masLoginService);
-	
+
 	context.subscriptions.push(vscode.authentication.registerAuthenticationProvider(masConfig.serviceId,
 		'Red Hat Managed Services', {
 		onDidChangeSessions: onDidChangeSessions.event,
@@ -81,7 +89,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				onDidChangeSessions.fire({ added: [session], removed: [], changed: [] });
 				return session;
 			} catch (error) {
-				telemetryService.send({ name: 'login_mas_failed' });
+				telemetryService.send({ name: 'login_mas_failed', properties: { error: error } });
 				throw error;
 			}
 		},
@@ -93,31 +101,15 @@ export async function activate(context: vscode.ExtensionContext) {
 					onDidChangeSessions.fire({ added: [], removed: [session], changed: [] });
 				}
 			} catch (error) {
-				telemetryService.send({ name: 'logout_mas_failed' });
+				telemetryService.send({ name: 'logout_mas_failed', properties: { error: error } });
 				throw error;
 			}
 		}
-	}));
-	
-	
+	}
+	));
+
+
 	telemetryService.sendStartupEvent();
 
 	return;
 }
-async function getKafkaServer(token: string): Promise<string|null> {
-	let requestConfig = {
-		headers: {
-			'Authorization': `Bearer ${token}`,
-			'Accept': 'application/json'
-		}
-	  }
-	  try {
-		const response = await axios.get(`${config.apiUrl}/api/managed-services-api/v1/kafkas`, requestConfig);
-		const kafkas = response.data;
-		return kafkas.items[0].bootstrapServerHost;
-	  } catch (err) {
-		console.log(err);
-		throw err;
-	  }
-}
-

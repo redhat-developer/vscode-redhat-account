@@ -9,6 +9,7 @@ import { Keychain } from './common/keychain';
 import Logger from './common/logger';
 import { Client, Issuer, generators, TokenSet } from 'openid-client';
 import { AuthConfig } from './common/configuration';
+import { ServerResponse } from 'node:http';
 
 interface IToken {
 	accessToken?: string; // When unable to refresh due to network problems, the access token becomes undefined
@@ -320,12 +321,18 @@ export class RedHatAuthenticationService {
 				const callbackResult = await callbackPromise;
 
 				if ('err' in callbackResult) {
-					callbackResult.res.writeHead(302, { Location: `/?error=${encodeURIComponent(callbackResult.err && callbackResult.err.message || 'Unknown error')}` });
-					callbackResult.res.end();
+					this.error(callbackResult.res, callbackResult.err);
 					throw callbackResult.err;
 				}
-				const tokenSet = await this.client.callback(redirect_uri, this.client.callbackParams(callbackResult.req), { code_verifier, nonce });
-				const token = this.convertToken(tokenSet, scope);
+				let tokenSet: TokenSet;
+				try {
+					tokenSet = await this.client.callback(redirect_uri, this.client.callbackParams(callbackResult.req), { code_verifier, nonce });
+				} catch (error) {
+					this.error(callbackResult.res, error);
+					throw error;
+				}
+				
+				const token = this.convertToken(tokenSet!, scope);
 
 				callbackResult.res.writeHead(302, { Location: `/?login=${encodeURIComponent(token.account.label)}` });
 				callbackResult.res.end();
@@ -351,6 +358,11 @@ export class RedHatAuthenticationService {
 				}, 5000);
 			}
 		});
+	}
+
+	public error(response: ServerResponse, error: any): void {
+		response.writeHead(302, { Location: `/?error=${encodeURIComponent(error && error.message || 'Unknown error')}` });
+		response.end();
 	}
 
 	public dispose(): void {
@@ -391,7 +403,6 @@ export class RedHatAuthenticationService {
 	}
 
 	private convertToken(tokenSet: TokenSet, scope: string, existingId?: string): IToken {
-		//console.log(`Token:\n${JSON.stringify(tokenSet)}`);
 		const claims = tokenSet.claims();
 		return {
 			expiresIn: tokenSet.expires_in,

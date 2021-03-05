@@ -5,14 +5,17 @@
 	"version": "0.0.1",
 	"publisher": "redhat",
 	"engines": {
-		"vscode": "^1.53.0"
+		"vscode": "^1.54.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/redhat-developer/vscode-redhat-account"
 	},
 	"segmentWriteKey": "eKBn0xqKQcQJVhUOW0vdQtNQiK791OLa",
 	"segmentWriteKeyDebug": "eKBn0xqKQcQJVhUOW0vdQtNQiK791OLa",
 	"extensionDependencies": [
 		"redhat.vscode-commons"
 	],
-	"enableProposedApi": true,
 	"categories": [
 		"Other"
 	],
@@ -23,6 +26,7 @@
 	],
 	"activationEvents": [
 		"onCommand:redhat.account.status",
+		"onCommand:redhat.mas.account.status",
 		"onAuthenticationRequest:redhat-account-auth",
 		"onAuthenticationRequest:redhat-mas-account-auth"
 	],
@@ -59,14 +63,13 @@
 	},
 	"dependencies": {
 		"@redhat-developer/vscode-redhat-telemetry": "^0.0.13",
-		"axios": "^0.21.1",
-		"openid-client": "^4.4.0"
+		"openid-client": "^4.4.1"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",
 		"@types/mocha": "^8.2.0",
 		"@types/node": "^12.19.9",
-		"@types/vscode": "^1.53.0",
+		"@types/vscode": "^1.54.0",
 		"@typescript-eslint/eslint-plugin": "^4.15.0",
 		"@typescript-eslint/parser": "^4.15.0",
 		"eslint": "^7.19.0",
