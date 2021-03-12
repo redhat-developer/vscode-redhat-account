@@ -27,8 +27,7 @@ export const StagingConfig: AuthConfig = {
     authUrl : 'https://sso.redhat.com/auth/realms/redhat-external',
     apiUrl: 'https://api.stage.openshift.com',
     callbackPath: 'sso-redhat-callback',
-    //clientId: 'vscode-redhat-account'
-    clientId: 'rhoas-cli-prod'
+    clientId: 'vscode-redhat-account'
 };
 
 export const StagingMasConfig: AuthConfig = {
