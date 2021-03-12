@@ -1,47 +1,43 @@
-# This is a basic workflow
-
 name: CI
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-    
-  workflow_dispatch:
-  
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ${{ matrix.os }}
+ build:
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
           node-version: 12.x
-
-      # Run install dependencies
-      - name: Install dependencies
-        run: npm i
-
-      # Build extension
-      - name: Run prepublish
-        run: npm run vscode:prepublish
-
-      # Run tests
-      - name: Run Test
+      - run: npm install
+      - name: Lint
+        run: npm run lint
+      - name: Build .vsix package
+        if: matrix.os != 'ubuntu-latest'
+        run: npm run package
+      - name: Build .vsix package on Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          npx vsce package -o vscode-redhat-account-${VERSION}-${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}.vsix
+      - name: Run tests
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: npm test --silent
+          run: npm test
+      - name: Upload linux-built vsix
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v2
+        with:
+          name: vscode-redhat-account
+          path: vscode-redhat-account*.vsix
+
