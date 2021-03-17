@@ -30,7 +30,7 @@
 		"onAuthenticationRequest:redhat-account-auth",
 		"onAuthenticationRequest:redhat-mas-account-auth"
 	],
-	"main": "./out/extension.js",
+	"main": "./dist/extension.js",
 	"contributes": {
 		"authentication": [
 			{
