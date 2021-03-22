@@ -126,10 +126,12 @@ export class RedHatAuthenticationService {
 			}
 		}
 
-		this._disposables.push(this.context.secrets.onDidChange(() => {
-			Logger.info('Secrets changed, checking for token updates');
-			this.checkForUpdates();
-		}));
+		if (this.context.secrets) {
+			this._disposables.push(this.context.secrets.onDidChange(() => {
+				Logger.info('Secrets changed, checking for token updates');
+				this.checkForUpdates();
+			}));
+		}
 	}
 
 	private parseStoredData(data: string): IStoredSession[] {
@@ -283,10 +285,10 @@ export class RedHatAuthenticationService {
 			const nonce = generators.nonce();
 			const { server, redirectPromise, callbackPromise } = createServer(this.config, nonce);
 
-			let token: IToken | undefined;
 			try {
-				const port = await startServer(server);
-				vscode.env.openExternal(vscode.Uri.parse(`http://localhost:${port}/signin?nonce=${encodeURIComponent(nonce)}`));
+				const serverBase = this.config.serverConfig.externalUrl;
+				const port = await startServer(this.config.serverConfig, server);
+				vscode.env.openExternal(vscode.Uri.parse(`${serverBase}:${port}/signin?nonce=${encodeURIComponent(nonce)}`));
 
 				const redirectReq = await redirectPromise;
 				if ('err' in redirectReq) {
@@ -300,7 +302,7 @@ export class RedHatAuthenticationService {
 				const updatedPortStr = (/^[^:]+:(\d+)$/.exec(Array.isArray(host) ? host[0] : host) || [])[1];
 				const updatedPort = updatedPortStr ? parseInt(updatedPortStr, 10) : port;
 
-				const redirect_uri = `http://localhost:${updatedPort}/${this.config.callbackPath}`;
+				const redirect_uri = `${serverBase}:${updatedPort}/${this.config.serverConfig.callbackPath}`;
 				const code_verifier = generators.codeVerifier();
 				const code_challenge = generators.codeChallenge(code_verifier);
 

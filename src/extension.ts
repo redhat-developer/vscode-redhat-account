@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
-import axios from 'axios';
 import { RedHatAuthenticationService, onDidChangeSessions } from './authentication-service';
 import { getAuthConfig, getMASAuthConfig } from './common/configuration';
 import { getTelemetryService, TelemetryService } from "@redhat-developer/vscode-redhat-telemetry";
 
-const config = getAuthConfig();
-const masConfig = getMASAuthConfig();
 
 export async function activate(context: vscode.ExtensionContext) {
+	const config = await getAuthConfig();
+	const masConfig = await getMASAuthConfig();
+	
 	const loginService = await RedHatAuthenticationService.build(context, config);
 	const telemetryService: TelemetryService = await getTelemetryService("redhat.vscode-redhat-account");
 

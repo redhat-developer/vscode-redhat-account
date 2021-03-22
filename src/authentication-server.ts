@@ -3,6 +3,7 @@ import * as url from 'url';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AuthConfig } from './common/configuration';
+import { ServerConfig } from './common/serverConfig';
 
 interface Deferred<T> {
 	resolve: (result: T | Promise<T>) => void;
@@ -17,7 +18,6 @@ export function createServer(config:AuthConfig, nonce: string) {
 
 	let deferredCallback: Deferred<RedirectResult>;
 	const callbackPromise = new Promise<RedirectResult>((resolve, reject) => deferredCallback = { resolve, reject });
-
 
 
 	const server = http.createServer(function (req, res) {
@@ -40,7 +40,7 @@ export function createServer(config:AuthConfig, nonce: string) {
 			case '/auth.css':
 				sendFile(res, path.join(__dirname, '../www/auth.css'), 'text/css; charset=utf-8');
 				break;
-			case `/${config.callbackPath}`:
+			case `/${config.serverConfig.callbackPath}`:
 				deferredCallback.resolve({ req, res });
 				break;
 			default:
@@ -54,7 +54,7 @@ export function createServer(config:AuthConfig, nonce: string) {
 
 }
 
-export async function startServer(server: http.Server): Promise<string> {
+export async function startServer(config:ServerConfig, server: http.Server): Promise<string> {
 	let portTimer: NodeJS.Timer;
 
 	function cancelPortTimer() {
@@ -85,8 +85,8 @@ export async function startServer(server: http.Server): Promise<string> {
 		server.on('close', () => {
 			reject(new Error('Closed'));
 		});
-
-		server.listen(0);
+		
+		server.listen(config.port);
 	});
 
 	port.then(cancelPortTimer, cancelPortTimer);
