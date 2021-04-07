@@ -30,10 +30,10 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           npx vsce package -o vscode-redhat-account-${VERSION}-${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}.vsix
-      - name: Run tests
-        uses: GabrielBB/xvfb-action@v1.0
-        with:
-          run: npm test
+      # - name: Run tests
+      #   uses: GabrielBB/xvfb-action@v1.0
+      #   with:
+      #     run: npm test
       - name: Upload linux-built vsix
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v2

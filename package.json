@@ -69,7 +69,7 @@
 		"openid-client": "^4.4.1"
 	},
 	"devDependencies": {
-		"@eclipse-che/plugin": "0.0.1-1616189095",
+		"@eclipse-che/plugin": "0.0.1-1617713071",
 		"@types/glob": "^7.1.3",
 		"@types/mocha": "^8.2.0",
 		"@types/node": "^12.19.9",
