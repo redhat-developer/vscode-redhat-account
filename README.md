@@ -9,3 +9,8 @@ Common account management for Red Hat OpenShift Services.
 - Run the `Run Extension Tests` target in the Debug View. This will:
 	- Start a task `npm: watch` to compile the code
 	- Run the extension integration test in a new VS Code window
+
+## License
+Copyright (c) Red Hat, Inc. All rights reserved.
+
+Licensed under the [MIT](LICENSE.txt) license.
