@@ -39,7 +39,7 @@ export async function getMASAuthConfig(): Promise<AuthConfig> {
     // };
     return {
         serviceId: 'redhat-mas-account-auth',
-        authUrl: 'https://keycloak-mas-sso-stage.apps.app-sre-stage-0.k3s7.p1.openshiftapps.com/auth/realms/rhoas/',
+        authUrl: 'https://identity.api.stage.openshift.com/auth/realms/rhoas/',
         apiUrl: 'https://api.stage.openshift.com',
         clientId: 'vscode-redhat-account',
         serverConfig: await getServerConfig(MAS_SSO_REDHAT)
