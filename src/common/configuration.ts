@@ -13,34 +13,19 @@ export const MAS_SSO_REDHAT = 'mas-sso-redhat';
 export type AuthType = 'sso-redhat' | 'mas-sso-redhat';
 
 export async function getAuthConfig(): Promise<AuthConfig> {
-    // return {
-    //     serviceId: 'redhat-account-auth',
-    //     authUrl : 'https://sso.redhat.com/auth/realms/redhat-external',
-    //     apiUrl: 'https://api.openshift.com',
-    //     clientId: 'vscode-redhat-account',
-    //     serverConfig: await getServerConfig(SSO_REDHAT)
-    // };
-
     return {
         serviceId: 'redhat-account-auth',
         authUrl: 'https://sso.redhat.com/auth/realms/redhat-external',
-        apiUrl: 'https://api.stage.openshift.com',
+        apiUrl: 'https://api.openshift.com',
         clientId: 'vscode-redhat-account',
         serverConfig: await getServerConfig(SSO_REDHAT)
     };
 }
 export async function getMASAuthConfig(): Promise<AuthConfig> {
-    // return {
-    //     serviceId: 'redhat-mas-account-auth',
-    //     authUrl: 'http://identity.api.openshift.com/auth/realms/rhoas/',
-    //     apiUrl: 'https://api.openshift.com',
-    //     clientId: 'vscode-redhat-account',
-    //     serverConfig: await getServerConfig(MAS_SSO_REDHAT)
-    // };
     return {
         serviceId: 'redhat-mas-account-auth',
-        authUrl: 'https://identity.api.stage.openshift.com/auth/realms/rhoas/',
-        apiUrl: 'https://api.stage.openshift.com',
+        authUrl: 'https://identity.api.openshift.com/auth/realms/rhoas/',
+        apiUrl: 'https://api.openshift.com',
         clientId: 'vscode-redhat-account',
         serverConfig: await getServerConfig(MAS_SSO_REDHAT)
     };
