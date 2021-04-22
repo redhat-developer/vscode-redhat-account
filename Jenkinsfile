@@ -7,7 +7,7 @@ def installBuildRequirements(){
 }
 
 def isCanonicalRepo() {
-    "master".equals(params.BRANCH) && "redhat-developer".equals(params.FORK)
+    "main".equals(params.BRANCH) && "redhat-developer".equals(params.FORK)
 }
 
 node('rhel8'){
