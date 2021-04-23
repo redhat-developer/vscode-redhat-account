@@ -1,14 +1,45 @@
-# Red Hat OpenShift Services Account
+# Red Hat Authentication
 
-Common account management for Red Hat OpenShift Services. 
+Provides authentication support for Red Hat accounts.
+
+- Authenticate against https://sso.redhat.com/ with the `redhat-account-auth` authentication provider
+```typescript
+const session = await authentication.getSession('redhat-account-auth', ['openid'], { createIfNone: true });
+if (session) {
+	// use access token
+	doSomething(session.accessToken);
+}	
+```
+- Authenticate against https://identity.api.openshift.com with the `redhat-mas-account-auth` authentication provider
+```typescript
+const session = await authentication.getSession('redhat-mas-account-auth', ['openid'], { createIfNone: true });
+if (session) {
+	// use access token
+	doSomething(session.accessToken);
+}
+```
+
+## Build
+In a terminal, run:
+```
+npm install
+npx vsce package
+```
+
+Install the generated vscode-redhat-account-*.vsix file.
+
+## Telemetry
+
+With your approval, the `Red Hat Authentication` extension collects anonymous [usage data](USAGE_DATA.md) and sends it to Red Hat servers to help improve our products and services.
+Read our [privacy statement](https://developers.redhat.com/article/tool-data-collection) to learn more.
+This extension respects the `redhat.telemetry.enabled` setting, which you can learn more about at https://github.com/redhat-developer/vscode-commons#how-to-disable-telemetry-reporting
 
 
-## Running the extension
-
-- Run `npm install` in terminal to install dependencies
-- Run the `Run Extension Tests` target in the Debug View. This will:
-	- Start a task `npm: watch` to compile the code
-	- Run the extension integration test in a new VS Code window
+## CI Builds
+- Go to the [CI Workflow](https://github.com/redhat-developer/vscode-redhat-account/actions/workflows/CI.yml?query=branch%3Amain+is%3Asuccess++) page, 
+- Click on the latest successful build
+- Download and unzip the latest vscode-redhat-account artifact
+- Install the vscode-redhat-account-*.vsix file.
 
 ## License
 Copyright (c) Red Hat, Inc. All rights reserved.

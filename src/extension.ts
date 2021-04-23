@@ -50,7 +50,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(masLoginService);
 
 	context.subscriptions.push(vscode.authentication.registerAuthenticationProvider(masConfig.serviceId,
-		'Red Hat Managed Services', {
+		'Red Hat OpenShift Application Services', {
 		onDidChangeSessions: onDidChangeSessions.event,
 		getSessions: (scopes: string[]) => masLoginService.getSessions(scopes),
 		createSession: async (scopes: string[]) => {

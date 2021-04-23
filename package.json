@@ -1,6 +1,6 @@
 {
 	"name": "vscode-redhat-account",
-	"displayName": "Red Hat Account",
+	"displayName": "Red Hat Authentication",
 	"description": "Provides authentication support for Red Hat accounts",
 	"version": "0.0.1",
 	"publisher": "redhat",
@@ -36,18 +36,8 @@
 				"id": "redhat-account-auth"
 			},
 			{
-				"label": "Red Hat Managed Services",
+				"label": "Red Hat OpenShift Application Services",
 				"id": "redhat-mas-account-auth"
-			}
-		],
-		"commands": [
-			{
-				"command": "redhat.account.status",
-				"title": "Red Hat: Check login status"
-			},
-			{
-				"command": "redhat.mas.account.status",
-				"title": "Red Hat MAS: Check token status"
 			}
 		]
 	},
