@@ -40,6 +40,9 @@ export function createServer(config:AuthConfig, nonce: string) {
 			case '/auth.css':
 				sendFile(res, path.join(__dirname, '../www/auth.css'), 'text/css; charset=utf-8');
 				break;
+			case '/favicon.ico':
+				sendFile(res, path.join(__dirname, '../www/favicon.ico'), 'image/vnd.microsoft.icon');
+				break;
 			case `/${config.serverConfig.callbackPath}`:
 				deferredCallback.resolve({ req, res });
 				break;
