@@ -1,3 +1,5 @@
+[![Marketplace Version](https://vsmarketplacebadge.apphb.com/version/redhat.vscode-redhat-account.svg "Current Release")](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-redhat-account)
+
 # Red Hat Authentication
 
 Provides authentication support for Red Hat accounts in Visual Studio Code.
