@@ -13,35 +13,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(loginService);
 
-	context.subscriptions.push(vscode.commands.registerCommand('redhat.account.status', async () => {
-		try {
-			return vscode.authentication.getSession(config.serviceId, ['openid']).then(async session => {
-				if (session) {
-					vscode.window.showInformationMessage(`You're logged in Red Hat as ${session?.account.label}`);
-				} else {
-					vscode.window.showWarningMessage(`You need to log in your Red Hat account`);
-				}
-			});
-		} catch (error) {
-			console.log('Error in redhat.account.status:', error);
-			vscode.window.showErrorMessage(error);
-		}
-	}));
-	context.subscriptions.push(vscode.commands.registerCommand('redhat.mas.account.status', async () => {
-		try {
-			return vscode.authentication.getSession(masConfig.serviceId, ['openid'], { createIfNone: true }).then(async session => {
-				if (session) {
-					vscode.window.showInformationMessage(`You're logged in Red Hat MAS as ${session?.account.label}`);
-				} else {
-					vscode.window.showWarningMessage(`You need to log in your Red Hat MAS account`);
-				}
-			});
-		} catch (error) {
-			console.log('Error in redhat.mas.account.status:', error);
-			vscode.window.showErrorMessage(error);
-		}
-	}));
-
 	await loginService.initialize();
 
 	context.subscriptions.push(vscode.authentication.registerAuthenticationProvider(config.serviceId,
@@ -50,24 +21,24 @@ export async function activate(context: vscode.ExtensionContext) {
 		getSessions: (scopes: string[]) => loginService.getSessions(scopes),
 		createSession: async (scopes: string[]) => {
 			try {
-				telemetryService.send({ name: 'login' });
 				const session = await loginService.createSession(scopes.sort().join(' '));
+				telemetryService.send({ name: 'account.login' });
 				onDidChangeSessions.fire({ added: [session], removed: [], changed: [] });
 				return session;
 			} catch (error) {
-				telemetryService.send({ name: 'login_failed' });
+				telemetryService.send({ name: 'account.login.failed', properties: {error: `${error}`}});
 				throw error;
 			}
 		},
 		removeSession: async (id: string) => {
 			try {
-				telemetryService.send({ name: 'logout' });
+				telemetryService.send({ name: 'account.logout' });
 				const session = await loginService.removeSession(id);
 				if (session) {
 					onDidChangeSessions.fire({ added: [], removed: [session], changed: [] });
 				}
 			} catch (error) {
-				telemetryService.send({ name: 'logout_failed' });
+				telemetryService.send({ name: 'account.logout.failed', properties: {error: `${error}`}});
 				throw error;
 			}
 		}
@@ -84,24 +55,24 @@ export async function activate(context: vscode.ExtensionContext) {
 		getSessions: (scopes: string[]) => masLoginService.getSessions(scopes),
 		createSession: async (scopes: string[]) => {
 			try {
-				telemetryService.send({ name: 'login_mas' });
+				telemetryService.send({ name: 'account.login.mas' });
 				const session = await masLoginService.createSession(scopes.sort().join(' '));
 				onDidChangeSessions.fire({ added: [session], removed: [], changed: [] });
 				return session;
 			} catch (error) {
-				telemetryService.send({ name: 'login_mas_failed', properties: { error: error } });
+				telemetryService.send({ name: 'account.login.mas.failed', properties: { error: `${error}` } });
 				throw error;
 			}
 		},
 		removeSession: async (id: string) => {
 			try {
-				telemetryService.send({ name: 'logout_mas' });
+				telemetryService.send({ name: 'account.logout.mas' });
 				const session = await masLoginService.removeSession(id);
 				if (session) {
 					onDidChangeSessions.fire({ added: [], removed: [session], changed: [] });
 				}
 			} catch (error) {
-				telemetryService.send({ name: 'logout_mas_failed', properties: { error: error } });
+				telemetryService.send({ name: 'account.logout.mas.failed', properties: { error: `${error}` } });
 				throw error;
 			}
 		}

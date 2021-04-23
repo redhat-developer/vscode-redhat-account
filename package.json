@@ -1,19 +1,18 @@
 {
 	"name": "vscode-redhat-account",
 	"displayName": "Red Hat Account",
-	"description": "Red Hat Services account login extension",
+	"description": "Provides authentication support for Red Hat accounts",
 	"version": "0.0.1",
 	"publisher": "redhat",
 	"engines": {
 		"vscode": "^1.54.0"
 	},
+	"icon":"icons/redhat-icon.png",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/redhat-developer/vscode-redhat-account"
 	},
-	"segmentWriteKey": "eKBn0xqKQcQJVhUOW0vdQtNQiK791OLa",
-	"segmentWriteKeyDebug": "eKBn0xqKQcQJVhUOW0vdQtNQiK791OLa",
 	"extensionDependencies": [
 		"redhat.vscode-commons"
 	],
@@ -26,8 +25,6 @@
 		"web"
 	],
 	"activationEvents": [
-		"onCommand:redhat.account.status",
-		"onCommand:redhat.mas.account.status",
 		"onAuthenticationRequest:redhat-account-auth",
 		"onAuthenticationRequest:redhat-mas-account-auth"
 	],
