@@ -289,11 +289,11 @@ export class RedHatAuthenticationService {
 				const serverBase = this.config.serverConfig.externalUrl;
 				const port = await startServer(this.config.serverConfig, server);
 				vscode.env.openExternal(vscode.Uri.parse(`${serverBase}:${port}/signin?nonce=${encodeURIComponent(nonce)}`));
-
+				
 				const redirectReq = await redirectPromise;
 				if ('err' in redirectReq) {
 					const { err, res } = redirectReq;
-					res.writeHead(302, { Location: `/?error=${encodeURIComponent(err && err.message || 'Unknown error')}` });
+					res.writeHead(302, { Location: `/?service=${this.config.serviceId}&error=${encodeURIComponent(err && err.message || 'Unknown error')}` });
 					res.end();
 					throw err;
 				}
@@ -336,7 +336,7 @@ export class RedHatAuthenticationService {
 				
 				const token = this.convertToken(tokenSet!, scope);
 
-				callbackResult.res.writeHead(302, { Location: `/?login=${encodeURIComponent(token.account.label)}` });
+				callbackResult.res.writeHead(302, { Location: `/?service=${this.config.serviceId}&login=${encodeURIComponent(token.account.label)}` });
 				callbackResult.res.end();
 
 
