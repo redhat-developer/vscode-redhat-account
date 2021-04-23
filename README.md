@@ -1,6 +1,6 @@
 # Red Hat Authentication
 
-Provides authentication support for Red Hat accounts.
+Provides authentication support for Red Hat accounts in Visual Studio Code.
 
 - Authenticate against https://sso.redhat.com/ with the `redhat-account-auth` authentication provider
 ```typescript
