@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { ServerResponse } from 'node:http';
+import { Client, generators, Issuer, TokenSet } from 'openid-client';
 import * as vscode from 'vscode';
 import { createServer, startServer } from './authentication-server';
+import { AuthConfig } from './common/configuration';
 import { Keychain } from './common/keychain';
 import Logger from './common/logger';
-import { Client, Issuer, generators, TokenSet } from 'openid-client';
-import { AuthConfig } from './common/configuration';
-import { ServerResponse } from 'node:http';
 
 interface IToken {
 	accessToken?: string; // When unable to refresh due to network problems, the access token becomes undefined
@@ -79,6 +79,7 @@ export class RedHatAuthenticationService {
 	}
 
 	public static async build(context: vscode.ExtensionContext, config: AuthConfig): Promise<RedHatAuthenticationService> {
+		Logger.info(`Configuring ${config.serviceId} {auth: ${config.authUrl}, api: ${config.apiUrl}}`);
 		const issuer = await Issuer.discover(config.authUrl);
 
 		const provider = new RedHatAuthenticationService(issuer, context, config);
@@ -278,7 +279,7 @@ export class RedHatAuthenticationService {
 
 
 	public async createSession(scopes: string): Promise<vscode.AuthenticationSession> {
-		Logger.info('Logging in...');
+		Logger.info(`Logging in ${this.config.authUrl}...`);
 
 		// eslint-disable-next-line no-async-promise-executor
 		return new Promise(async (resolve, reject) => {
@@ -421,7 +422,7 @@ export class RedHatAuthenticationService {
 	}
 
 	private async refreshToken(refreshToken: string, scope: string, sessionId: string): Promise<IToken> {
-		Logger.info('Refreshing token...');
+		Logger.info(`Refreshing token from ${this.config.authUrl}`);
 		try {
 			const refreshedToken = await this.client.refresh(refreshToken);
 			const token = this.convertToken(refreshedToken, scope, sessionId);

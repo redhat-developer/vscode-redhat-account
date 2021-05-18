@@ -1,4 +1,3 @@
-import { getCheServerConfig } from "../che/cheServerConfig";
 import { ServerConfig } from "./serverConfig";
 
 export interface AuthConfig {
@@ -15,7 +14,7 @@ export type AuthType = 'sso-redhat' | 'mas-sso-redhat';
 export async function getAuthConfig(): Promise<AuthConfig> {
     return {
         serviceId: 'redhat-account-auth',
-        authUrl: 'https://sso.redhat.com/auth/realms/redhat-external',
+        authUrl: 'https://sso.redhat.com/auth/realms/redhat-external/',
         apiUrl: 'https://api.openshift.com',
         clientId: 'vscode-redhat-account',
         serverConfig: await getServerConfig(SSO_REDHAT)
