@@ -2,7 +2,7 @@
 	"name": "vscode-redhat-account",
 	"displayName": "Red Hat Authentication",
 	"description": "Provides authentication support for Red Hat accounts",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"publisher": "redhat",
 	"engines": {
 		"vscode": "^1.54.0"
