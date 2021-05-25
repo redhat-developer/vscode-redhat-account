@@ -53,6 +53,10 @@ class UriEventHandler extends vscode.EventEmitter<vscode.Uri> implements vscode.
 	}
 }
 
+export interface RedHatAuthenticationSession extends vscode.AuthenticationSession {
+	idToken: string | undefined;
+}
+
 export class RedHatAuthenticationService {
 
 	private _tokens: IToken[] = [];
@@ -215,22 +219,24 @@ export class RedHatAuthenticationService {
 	 * Return a session object without checking for expiry and potentially refreshing.
 	 * @param token The token information.
 	 */
-	private convertToSessionSync(token: IToken): vscode.AuthenticationSession {
+	private convertToSessionSync(token: IToken): RedHatAuthenticationSession {
+		console.log('ID token', token.idToken);
 		return {
 			id: token.sessionId,
 			accessToken: token.accessToken!,
-			//idToken: token.idToken,
+			idToken: token.idToken,
 			account: token.account,
 			scopes: token.scope.split(' ')
 		};
 	}
 
-	private async convertToSession(token: IToken): Promise<vscode.AuthenticationSession> {
+	private async convertToSession(token: IToken): Promise<RedHatAuthenticationSession> {
 		const resolvedTokens = await this.resolveAccessAndIdTokens(token);
+		console.log('ID token', resolvedTokens.idToken);
 		return {
 			id: token.sessionId,
 			accessToken: resolvedTokens.accessToken,
-			//idToken: resolvedTokens.idToken,
+			idToken: resolvedTokens.idToken,
 			account: token.account,
 			scopes: token.scope.split(' ')
 		};
@@ -410,6 +416,7 @@ export class RedHatAuthenticationService {
 		return {
 			expiresIn: tokenSet.expires_in,
 			expiresAt: tokenSet.expires_in ? Date.now() + tokenSet.expires_in * 1000 : undefined,
+			idToken: tokenSet.id_token,
 			accessToken: tokenSet.access_token,
 			refreshToken: tokenSet.refresh_token!,
 			sessionId: existingId || tokenSet.session_state!,
