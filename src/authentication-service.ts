@@ -220,7 +220,6 @@ export class RedHatAuthenticationService {
 	 * @param token The token information.
 	 */
 	private convertToSessionSync(token: IToken): RedHatAuthenticationSession {
-		console.log('ID token', token.idToken);
 		return {
 			id: token.sessionId,
 			accessToken: token.accessToken!,
@@ -232,7 +231,6 @@ export class RedHatAuthenticationService {
 
 	private async convertToSession(token: IToken): Promise<RedHatAuthenticationSession> {
 		const resolvedTokens = await this.resolveAccessAndIdTokens(token);
-		console.log('ID token', resolvedTokens.idToken);
 		return {
 			id: token.sessionId,
 			accessToken: resolvedTokens.accessToken,
