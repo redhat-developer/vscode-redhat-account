@@ -13,10 +13,10 @@ async function main() {
 		const cliPath = resolveCliPathFromVSCodeExecutablePath(vscodeExecutablePath);
 
 		// Use cp.spawn / cp.exec for custom setup
-		cp.spawnSync(cliPath, ['--install-extension', 'redhat.vscode-commons'], {
-			encoding: 'utf-8',
-			stdio: 'inherit'
-		});
+		// cp.spawnSync(cliPath, ['--install-extension', 'some-extension'], {
+		// 	encoding: 'utf-8',
+		// 	stdio: 'inherit'
+		// });
 
 		// The folder containing the Extension Manifest package.json
 		// Passed to `--extensionDevelopmentPath`

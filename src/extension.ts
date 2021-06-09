@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { RedHatAuthenticationService, onDidChangeSessions } from './authentication-service';
 import { getAuthConfig, getMASAuthConfig } from './common/configuration';
-import { getTelemetryService, TelemetryService } from "@redhat-developer/vscode-redhat-telemetry";
+import { getRedHatService, TelemetryService } from "@redhat-developer/vscode-redhat-telemetry";
 
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -9,7 +9,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const masConfig = await getMASAuthConfig();
 	
 	const loginService = await RedHatAuthenticationService.build(context, config);
-	const telemetryService: TelemetryService = await getTelemetryService("redhat.vscode-redhat-account");
+	const telemetryService: TelemetryService = await (await getRedHatService(context)).getTelemetryService();
 
 	context.subscriptions.push(loginService);
 

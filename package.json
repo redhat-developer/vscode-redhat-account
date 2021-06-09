@@ -7,15 +7,12 @@
 	"engines": {
 		"vscode": "^1.54.0"
 	},
-	"icon":"icons/redhat-icon.png",
+	"icon": "icons/redhat-icon.png",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/redhat-developer/vscode-redhat-account"
 	},
-	"extensionDependencies": [
-		"redhat.vscode-commons"
-	],
 	"categories": [
 		"Other"
 	],
@@ -39,7 +36,19 @@
 				"label": "Red Hat OpenShift Application Services",
 				"id": "redhat-mas-account-auth"
 			}
-		]
+		],
+		"configuration": {
+			"type": "object",
+			"title": "Red Hat Authentication",
+			"properties": {
+				"redhat.telemetry.enabled": {
+					"type": "boolean",
+					"default": null,
+					"markdownDescription": "Enable usage data and errors to be sent to Red Hat servers. Read our [privacy statement](https://developers.redhat.com/article/tool-data-collection).",
+					"scope": "window"
+				}
+			}
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run package",
@@ -53,7 +62,7 @@
 		"test": "node ./out/test/runTest.js"
 	},
 	"dependencies": {
-		"@redhat-developer/vscode-redhat-telemetry": "^0.0.13",
+		"@redhat-developer/vscode-redhat-telemetry": "^0.1.1",
 		"openid-client": "^4.6.0"
 	},
 	"devDependencies": {

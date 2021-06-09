@@ -1,6 +1,6 @@
 # Data collection
 
-`Red Hat Authentication` has opt-in telemetry collection, provided by [`Red Hat Commons`](https://github.com/redhat-developer/vscode-commons).
+`Red Hat Authentication` has opt-in telemetry collection, provided by [`vscode-redhat-telemetry`](https://github.com/redhat-developer/vscode-redhat-telemetry).
 
 ## What's included in the `Red Hat Authentication` telemetry data
 
@@ -12,7 +12,7 @@
 ## What's included in the general telemetry data
 
 Please see the
-[`Red Hat Commons` data collection information](https://github.com/redhat-developer/vscode-commons/blob/master/USAGE_DATA.md#other-extensions)
+[`vscode-redhat-telemetry` data collection information](https://github.com/redhat-developer/vscode-redhat-telemetry/blob/HEAD/USAGE_DATA.md)
 for information on what data it collects.
 
 ## How to opt in or out
