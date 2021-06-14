@@ -2,9 +2,10 @@
 
 All notable changes to the `Red Hat Authentication` extension will be documented in this file.
 
-## 0.0.3 (Upcoming)
+## 0.0.3 (14/06/2021)
 - Remove dependency to vscode-commons (#12)
-- Add idToken property to AuthenticationSession instance (#11) 
+- Add idToken property to AuthenticationSession instance (#11)
+- update dependencies
 
 ## 0.0.2 (23/04/2021)
 
