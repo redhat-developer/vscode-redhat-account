@@ -2,7 +2,7 @@
 	"name": "vscode-redhat-account",
 	"displayName": "Red Hat Authentication",
 	"description": "Provides authentication support for Red Hat accounts",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"publisher": "redhat",
 	"engines": {
 		"vscode": "^1.54.0"
@@ -44,7 +44,10 @@
 					"type": "boolean",
 					"default": null,
 					"markdownDescription": "Enable usage data and errors to be sent to Red Hat servers. Read our [privacy statement](https://developers.redhat.com/article/tool-data-collection).",
-					"scope": "window"
+					"scope": "window",
+					"tags": [
+						"telemetry"
+					]
 				}
 			}
 		}
@@ -62,24 +65,24 @@
 	},
 	"dependencies": {
 		"@redhat-developer/vscode-redhat-telemetry": "0.4.2",
-		"openid-client": "^4.7.4"
+		"openid-client": "5.1.5"
 	},
 	"devDependencies": {
 		"@eclipse-che/plugin": "0.0.1-1623517395",
-		"@types/glob": "^7.1.3",
-		"@types/mocha": "^8.2.2",
+		"@types/glob": "^7.2.0",
+		"@types/mocha": "^9.1.1",
 		"@types/node": "^12.19.9",
 		"@types/vscode": "^1.54.0",
-		"@typescript-eslint/eslint-plugin": "^4.18.0",
-		"@typescript-eslint/parser": "^4.18.0",
-		"eslint": "^7.19.0",
-		"glob": "^7.1.6",
-		"mocha": "^8.2.2",
-		"source-map-support": "^0.5.19",
-		"ts-loader": "^8.0.14",
-		"typescript": "^4.2.3",
-		"vscode-test": "^1.5.0",
-		"webpack": "^5.19.0",
-		"webpack-cli": "^4.4.0"
+		"@typescript-eslint/eslint-plugin": "^5.23.0",
+		"@typescript-eslint/parser": "^5.23.0",
+		"eslint": "^8.15.0",
+		"glob": "^8.0.1",
+		"mocha": "^10.0.0",
+		"source-map-support": "^0.5.21",
+		"ts-loader": "9.3.0",
+		"typescript": "^4.6.4",
+		"vscode-test": "^1.6.1",
+		"webpack": "^5.72.1",
+		"webpack-cli": "^4.9.2"
 	}
 }

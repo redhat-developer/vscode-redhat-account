@@ -102,7 +102,7 @@ export class RedHatAuthenticationService {
 
 					try {
 						await this.refreshToken(session.refreshToken, session.scope, session.id);
-					} catch (e) {
+					} catch (e: any) {
 						if (e.message === REFRESH_NETWORK_FAILURE) {
 							const didSucceedOnRetry = await this.handleRefreshNetworkError(session.id, session.refreshToken, session.scope);
 							if (!didSucceedOnRetry) {
@@ -169,7 +169,7 @@ export class RedHatAuthenticationService {
 						try {
 							const token = await this.refreshToken(session.refreshToken, session.scope, session.id);
 							added.push(this.convertToSessionSync(token));
-						} catch (e) {
+						} catch (e:any) {
 							if (e.message === REFRESH_NETWORK_FAILURE) {
 								// Ignore, will automatically retry on next poll.
 							} else {
@@ -188,7 +188,7 @@ export class RedHatAuthenticationService {
 				}));
 
 				await Promise.all(promises);
-			} catch (e) {
+			} catch (e:any) {
 				Logger.error(e.message);
 				// if data is improperly formatted, remove all of it and send change event
 				removed = this._tokens.map(this.convertToSessionSync);
@@ -351,7 +351,7 @@ export class RedHatAuthenticationService {
 
 				resolve(session);
 
-			} catch (e) {
+			} catch (e:any) {
 				Logger.error(e.message);
 				// If the error was about starting the server, try directly hitting the login endpoint instead
 				if (e.message === 'Error listening to server' || e.message === 'Closed' || e.message === 'Timeout waiting for port') {
@@ -392,7 +392,7 @@ export class RedHatAuthenticationService {
 				try {
 					const refreshedToken = await this.refreshToken(token.refreshToken, scope, token.sessionId);
 					onDidChangeSessions.fire({ added: [], removed: [], changed: [this.convertToSessionSync(refreshedToken)] });
-				} catch (e) {
+				} catch (e:any) {
 					if (e.message === REFRESH_NETWORK_FAILURE) {
 						const didSucceedOnRetry = await this.handleRefreshNetworkError(token.sessionId, token.refreshToken, scope);
 						if (!didSucceedOnRetry) {
