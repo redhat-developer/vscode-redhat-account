@@ -18,9 +18,9 @@ export class Keychain {
 				return await this.context.secrets.store(this.serviceId, token);
 			}
 			this.memoryStore.set(this.serviceId, token);
-		} catch (e) {
+		} catch (e:any) {
 			// Ignore
-			Logger.error(`Storing ${this.serviceId} token failed: ${e}`);
+			Logger.error(`Storing ${this.serviceId} token failed: ${e.message}`);
 			const troubleshooting = "Troubleshooting Guide";
 			const result = await vscode.window.showErrorMessage(`Writing login information to the keychain failed with error '${e.message}'.`, troubleshooting);
 			if (result === troubleshooting) {
