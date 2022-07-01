@@ -37,7 +37,7 @@ node('rhel8'){
     if (params.UPLOAD_LOCATION && isCanonicalRepo()) {
         stage 'Upload vscode-redhat-account to staging'
         def vsix = findFiles(glob: '**.vsix*')
-        sh "rsync -Pzrlt --rsh=ssh --protocol=28 ${vsix[0].path} ${UPLOAD_LOCATION}/snapshots/vscode-redhat-account/"
+        sh "sftp -C ${UPLOAD_LOCATION}/snapshots/vscode-redhat-account/ <<< \$'put -p \"${vsix[0].path}\"'"
         stash name:'vsix', includes:vsix[0].path
     }
 }
@@ -65,7 +65,7 @@ node('rhel8'){
 
     if (params.UPLOAD_LOCATION) {
       stage "Promote build to stable/ directory"
-      sh "rsync -Pzrlt --rsh=ssh --protocol=28 *.vsix* ${UPLOAD_LOCATION}/stable/vscode-redhat-account/"
+      sh "sftp -C ${UPLOAD_LOCATION}/stable/vscode-redhat-account/ <<< \$'put -p \"${vsix[0].path}\"'"
     }
   }
 }
