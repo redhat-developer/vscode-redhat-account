@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 
 def installBuildRequirements(){
-    def nodeHome = tool 'nodejs-12.20.0'
+    def nodeHome = tool 'nodejs-14.19.1'
     env.PATH="${env.PATH}:${nodeHome}/bin"
     sh "npm install -g typescript vsce"
 }
@@ -20,7 +20,7 @@ node('rhel8'){
     installBuildRequirements()
 
     stage 'Build vscode-redhat-account'
-    sh "npm install"
+    sh "npm ci"
     sh "npm run vscode:prepublish"
 
     // stage 'Test vscode-redhat-account for staging'
