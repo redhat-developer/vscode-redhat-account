@@ -2,6 +2,10 @@
 
 All notable changes to the `Red Hat Authentication` extension will be documented in this file.
 
+## 0.0.5 (01/07/2022)
+- Prepare MAS SSO Shutdown ([#15](https://github.com/redhat-developer/vscode-redhat-account/pull/15))
+- Compile against Node 14 ([#14](https://github.com/redhat-developer/vscode-redhat-account/pull/14))
+
 ## 0.0.4 (22/09/2021)
 - Remove web extension kind ([#13](https://github.com/redhat-developer/vscode-redhat-account/pull/13))
 - Update vscode-redhat-telemetry to 0.4.2
