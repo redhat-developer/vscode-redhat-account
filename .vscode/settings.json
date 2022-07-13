@@ -1,3 +1,6 @@
 {
-  "debug.node.autoAttach": "on"
+  "debug.node.autoAttach": "on",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true
+  }
 }

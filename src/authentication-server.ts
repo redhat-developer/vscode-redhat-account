@@ -1,7 +1,7 @@
-import * as http from 'http';
-import * as url from 'url';
 import * as fs from 'fs';
+import * as http from 'http';
 import * as path from 'path';
+import * as url from 'url';
 import { AuthConfig } from './common/configuration';
 import { ServerConfig } from './common/serverConfig';
 
@@ -53,8 +53,6 @@ export function createServer(config:AuthConfig, nonce: string) {
 		}
 	});
 	return { server, redirectPromise, callbackPromise };
-
-
 }
 
 export async function startServer(config:ServerConfig, server: http.Server): Promise<string> {

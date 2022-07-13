@@ -2,6 +2,9 @@
 
 All notable changes to the `Red Hat Authentication` extension will be documented in this file.
 
+## 0.0.6 (13/07/2022)
+- Remove MAS SSO provider ([#17](https://github.com/redhat-developer/vscode-redhat-account/pull/17))
+
 ## 0.0.5 (05/07/2022)
 - Add DCO Documentation ([#16](https://github.com/redhat-developer/vscode-redhat-account/pull/16))
 - Prepare MAS SSO Shutdown ([#15](https://github.com/redhat-developer/vscode-redhat-account/pull/15))
