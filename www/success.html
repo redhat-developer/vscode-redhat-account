@@ -33,10 +33,6 @@
 
     <script>
       var search = window.location.search;
-      var service = (/[?&^]service=([^&]+)/.exec(search) || [])[1];
-      if (service == 'redhat-mas-account-auth') {
-        document.getElementById("service").innerHTML = "Red Hat OpenShift Application Services";
-      }
       var login = (/[?&^]login=([^&]+)/.exec(search) || [])[1];
       if (login) {
         document.getElementById("login").innerHTML = decodeURIComponent(login);

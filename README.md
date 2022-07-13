@@ -12,14 +12,6 @@ if (session) {
 	doSomething(session.accessToken);
 }	
 ```
-- Authenticate against https://identity.api.openshift.com with the `redhat-mas-account-auth` authentication provider
-```typescript
-const session = await authentication.getSession('redhat-mas-account-auth', ['openid'], { createIfNone: true });
-if (session) {
-	// use access token
-	doSomething(session.accessToken);
-}
-```
 
 ## Build
 In a terminal, run:
