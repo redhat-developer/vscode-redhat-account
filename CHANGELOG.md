@@ -2,6 +2,10 @@
 
 All notable changes to the `Red Hat Authentication` extension will be documented in this file.
 
+## 0.0.7 (18/11/2022)
+- Fixes running in WSL2 ([#18](https://github.com/redhat-developer/vscode-redhat-account/issues/18))
+- Update vscode-redhat-telemetry to 0.5.2
+
 ## 0.0.6 (13/07/2022)
 - Remove MAS SSO provider ([#17](https://github.com/redhat-developer/vscode-redhat-account/pull/17))
 
