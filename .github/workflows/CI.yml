@@ -25,6 +25,21 @@ jobs:
       - name: Build .vsix package
         if: matrix.os != 'ubuntu-latest'
         run: npm run package
+        
+
+      - name: Check token
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "The VSCODE_MARKETPLACE_FAKE_TOKEN variable is $( [ -n "$VSCODE_MARKETPLACE_FAKE_TOKEN" ] && echo "not empty" || echo "empty" )"
+          echo "The VSCODE_MARKETPLACE_OWNER_TOKEN variable is $( [ -n "$VSCODE_MARKETPLACE_OWNER_TOKEN" ] && echo "not empty" || echo "empty" )"
+          
+          echo "The VSCODE_MARKETPLACE_TOKEN variable is $( [ -n "$VSCODE_MARKETPLACE_TOKEN" ] && echo "not empty" || echo "empty" )"
+          npx vsce verify-pat --pat "$VSCODE_MARKETPLACE_TOKEN"" redhat
+        env:
+          VSCODE_MARKETPLACE_TOKEN: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
+          VSCODE_MARKETPLACE_FAKE_TOKEN: ${{ secrets.VSCODE_MARKETPLACE_FAKE_TOKEN }}
+          VSCODE_MARKETPLACE_OWNER_TOKEN: ${{ secrets.VSCODE_MARKETPLACE_OWNER_TOKEN }}
+
       - name: Build .vsix package on Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
