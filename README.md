@@ -1,4 +1,5 @@
-[![Marketplace Version](https://vsmarketplacebadge.apphb.com/version/redhat.vscode-redhat-account.svg "Current Release")](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-redhat-account)
+[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/redhat.vscode-redhat-account?style=for-the-badge&label=VS%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-redhat-account)
+
 
 # Red Hat Authentication
 
