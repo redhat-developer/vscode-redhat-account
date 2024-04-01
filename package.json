@@ -5,7 +5,7 @@
 	"version": "0.1.0",
 	"publisher": "redhat",
 	"engines": {
-		"vscode": "^1.54.0"
+		"vscode": "^1.64.0"
 	},
 	"icon": "icons/redhat-icon.png",
 	"license": "MIT",
@@ -60,6 +60,7 @@
 	},
 	"dependencies": {
 		"@redhat-developer/vscode-redhat-telemetry": "0.5.4",
+		"node-fetch": "^3.3.2",
 		"openid-client": "5.3.2"
 	},
 	"devDependencies": {
@@ -67,7 +68,7 @@
 		"@types/glob": "^7.2.0",
 		"@types/mocha": "^9.1.1",
 		"@types/node": "^14.14.20",
-		"@types/vscode": "^1.54.0",
+		"@types/vscode": "^1.64.0",
 		"@typescript-eslint/eslint-plugin": "^5.23.0",
 		"@typescript-eslint/parser": "^5.23.0",
 		"eslint": "^8.15.0",
