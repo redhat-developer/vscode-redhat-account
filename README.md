@@ -15,6 +15,9 @@ if (session) {
 ```
 
 ## Build
+
+`vscode-redhat-account` supports Node 20 or greater.
+
 In a terminal, run:
 ```
 npm install
