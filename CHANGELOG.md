@@ -6,6 +6,7 @@ All notable changes to the `Red Hat Authentication` extension will be documented
 - Minimum Node version is now Node18
 - Upgrade axios from 0.8.1 to 0.27 (GHSA-wf5p-g6vw-rhxx)
 - Upgrade to redhat-developer/vscode-redhat-telemetry to 0.7.1 (GHSA-wf5p-g6vw-rhxx)
+- Replace vscode-test with @vscode/test-electron
 
 ## 0.1.0 (23/01/2023)
 - Fixed Extension failing to get activated in disconnected environment  ([#2](https://github.com/redhat-developer/vscode-redhat-account/issues/22))
