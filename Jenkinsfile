@@ -3,7 +3,6 @@
 def installBuildRequirements(){
     def nodeHome = tool 'nodejs-18.16.1'
     env.PATH="${env.PATH}:${nodeHome}/bin"
-    sh "npm install -g typescript vsce"
 }
 
 def isCanonicalRepo() {
@@ -31,7 +30,7 @@ node('rhel8'){
 
     stage "Package vscode-redhat-account"
     def packageJson = readJSON file: 'package.json'
-    sh "vsce package -o vscode-redhat-account-${packageJson.version}-${env.BUILD_NUMBER}.vsix"
+    sh "npx @vscode/vsce package -o vscode-redhat-account-${packageJson.version}-${env.BUILD_NUMBER}.vsix"
     sh "sha256sum *.vsix > vscode-redhat-account-${packageJson.version}-${env.BUILD_NUMBER}.vsix.sha256"
 
     if (params.UPLOAD_LOCATION && isCanonicalRepo()) {
@@ -53,13 +52,13 @@ node('rhel8'){
     def vsix = findFiles(glob: '**.vsix*')
     // VS Code Marketplace
     withCredentials([[$class: 'StringBinding', credentialsId: 'vscode_java_marketplace', variable: 'TOKEN']]) {
-        sh 'vsce publish -p ${TOKEN} --packagePath' + " ${vsix[0].path}"
+        sh 'npx @vscode/vsce publish -p ${TOKEN} --packagePath' + " ${vsix[0].path}"
     }
 
     // Open-vsx Marketplace
     sh "npm install -g ovsx"
     withCredentials([[$class: 'StringBinding', credentialsId: 'open-vsx-access-token', variable: 'OVSX_TOKEN']]) {
-        sh 'ovsx publish -p ${OVSX_TOKEN}' + " ${vsix[0].path}"
+        sh 'npx ovsx publish -p ${OVSX_TOKEN}' + " ${vsix[0].path}"
     }
     archive includes:"**.vsix"
 
