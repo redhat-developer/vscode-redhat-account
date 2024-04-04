@@ -14,6 +14,14 @@ if (session) {
 }	
 ```
 
+## Testing
+
+An interactive test scenario is available. It requires a user account and it will rely on the local web browser. You can run it with:
+
+```shell
+npm run interactive-test
+```
+
 ## Build
 
 `vscode-redhat-account` supports Node 18 or greater.
