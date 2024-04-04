@@ -379,6 +379,7 @@ export class RedHatAuthenticationService {
 
 	private async createSessionDeviceCodeFlow(scopes: string): Promise<vscode.AuthenticationSession> {
 		Logger.info('Using device code flow.');
+		// eslint-disable-next-line no-async-promise-executor
 		return new Promise(async (resolve, reject) => {
 			try {
 				const code_verifier = generators.codeVerifier();
