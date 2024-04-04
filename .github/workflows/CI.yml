@@ -29,7 +29,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          npx vsce package -o vscode-redhat-account-${VERSION}-${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}.vsix
+          npx @vscode/vsce package -o vscode-redhat-account-${VERSION}-${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}.vsix
       # - name: Run tests
       #   uses: GabrielBB/xvfb-action@v1.0
       #   with:
