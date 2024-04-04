@@ -407,8 +407,6 @@ export class RedHatAuthenticationService {
 					const tokenSet = await deviceAuthorizationResponse.poll()
 					Logger.info('Done polling')
 					return tokenSet;
-					//TODO: Support "Cancel"
-
 				});
 				const token = this.convertToken(tokenSet!, scopes);
 				this.setToken(token, scopes);
