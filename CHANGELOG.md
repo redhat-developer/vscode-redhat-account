@@ -2,8 +2,9 @@
 
 All notable changes to the `Red Hat Authentication` extension will be documented in this file.
 
-## 0.2.0
-- Minimum Node version is now Node18
+## 0.2.0 (04/04/2024)
+- Add support for Device code flow, when running in a browser
+- Minimum Node version is now Node 18
 - Upgrade axios from 0.8.1 to 0.27 (GHSA-wf5p-g6vw-rhxx)
 - Upgrade to redhat-developer/vscode-redhat-telemetry to 0.7.1 (GHSA-wf5p-g6vw-rhxx)
 - Replace vscode-test with @vscode/test-electron
