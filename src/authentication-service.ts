@@ -405,8 +405,7 @@ export class RedHatAuthenticationService {
 					title: 'Waiting for device code authorization'
 				}, async (_, token) => {
 					Logger.info(`Polling for ${deviceAuthorizationResponse.expires_in}`);
-					const tokenSet = await deviceAuthorizationResponse.poll()
-					Logger.info('Done polling')
+					const tokenSet = await deviceAuthorizationResponse.poll();
 					return tokenSet;
 				});
 				const token = this.convertToken(tokenSet!, scopes);
