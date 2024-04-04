@@ -57,11 +57,12 @@ export interface RedHatAuthenticationSession extends vscode.AuthenticationSessio
 	idToken: string | undefined;
 }
 
-export const enum ExtensionHost {
-	WebWorker,
-	Remote,
-	Local
-}
+export const ExtensionHost = {
+	WebWorker: "WebWorker",
+	Remote: "Remote",
+	Local: "Local"
+} as const;
+type ExtensionHostType = typeof ExtensionHost[keyof typeof ExtensionHost];
 export class RedHatAuthenticationService {
 
 	private _tokens: IToken[] = [];
@@ -72,7 +73,7 @@ export class RedHatAuthenticationService {
 	private keychain: Keychain;
 	private context: vscode.ExtensionContext;
 	private config: AuthConfig;
-	private extensionHost: ExtensionHost;
+	private extensionHost: ExtensionHostType;
 
 	constructor(issuer: Issuer<Client>, context: vscode.ExtensionContext, config: AuthConfig) {
 		//this._uriHandler = new UriEventHandler();
