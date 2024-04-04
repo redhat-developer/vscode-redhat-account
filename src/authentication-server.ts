@@ -56,7 +56,7 @@ export function createServer(config:AuthConfig, nonce: string) {
 }
 
 export async function startServer(config:ServerConfig, server: http.Server): Promise<string> {
-	let portTimer: NodeJS.Timer;
+	let portTimer: ReturnType<typeof setTimeout>;
 
 	function cancelPortTimer() {
 		clearTimeout(portTimer);
