@@ -5,7 +5,7 @@
 	"version": "0.2.0",
 	"publisher": "redhat",
 	"engines": {
-		"vscode": "^1.54.0"
+		"vscode": "^1.55.0"
 	},
 	"icon": "icons/redhat-icon.png",
 	"license": "MIT",
@@ -56,7 +56,7 @@
 		"test-watch": "tsc -watch -p ./",
 		"pretest": "npm run test-compile && npm run lint",
 		"lint": "eslint src --ext ts",
-		"test": "node ./out/test/runTest.js"
+		"interactive-test": "node ./out/test/runTest.js"
 	},
 	"dependencies": {
 		"@redhat-developer/vscode-redhat-telemetry": "^0.7.1",
@@ -67,7 +67,7 @@
 		"@types/glob": "^7.2.0",
 		"@types/mocha": "^9.1.1",
 		"@types/node": "^14.14.20",
-		"@types/vscode": "^1.54.0",
+		"@types/vscode": "~1.55.0",
 		"@typescript-eslint/eslint-plugin": "^5.23.0",
 		"@typescript-eslint/parser": "^5.23.0",
 		"eslint": "^8.15.0",

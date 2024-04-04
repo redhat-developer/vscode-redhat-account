@@ -57,6 +57,12 @@ export interface RedHatAuthenticationSession extends vscode.AuthenticationSessio
 	idToken: string | undefined;
 }
 
+export const ExtensionHost = {
+	WebWorker: "WebWorker",
+	Remote: "Remote",
+	Local: "Local"
+} as const;
+type ExtensionHostType = typeof ExtensionHost[keyof typeof ExtensionHost];
 export class RedHatAuthenticationService {
 
 	private _tokens: IToken[] = [];
@@ -67,6 +73,7 @@ export class RedHatAuthenticationService {
 	private keychain: Keychain;
 	private context: vscode.ExtensionContext;
 	private config: AuthConfig;
+	private extensionHost: ExtensionHostType;
 
 	constructor(issuer: Issuer<Client>, context: vscode.ExtensionContext, config: AuthConfig) {
 		//this._uriHandler = new UriEventHandler();
@@ -78,6 +85,11 @@ export class RedHatAuthenticationService {
 			token_endpoint_auth_method: 'none'
 		});
 		this.context = context;
+
+		// Copied from the github authentication provider
+		this.extensionHost = typeof navigator === 'undefined'
+			? context.extension.extensionKind === vscode.ExtensionKind.UI ? ExtensionHost.Local : ExtensionHost.Remote
+			: ExtensionHost.WebWorker;
 
 		this.keychain = new Keychain(config.serviceId, context);
 	}
@@ -281,10 +293,8 @@ export class RedHatAuthenticationService {
 		return Promise.all(matchingTokens.map(token => this.convertToSession(token)));
 	}
 
-
-	public async createSession(scopes: string): Promise<vscode.AuthenticationSession> {
-		Logger.info(`Logging in ${this.config.authUrl}...`);
-
+	private async createSessionAuthCodeFlow(scopes: string): Promise<vscode.AuthenticationSession> {
+		Logger.info('Using auth code flow.');
 		// eslint-disable-next-line no-async-promise-executor
 		return new Promise(async (resolve, reject) => {
 			const nonce = generators.nonce();
@@ -365,6 +375,57 @@ export class RedHatAuthenticationService {
 				}, 5000);
 			}
 		});
+	}
+
+	private async createSessionDeviceCodeFlow(scopes: string): Promise<vscode.AuthenticationSession> {
+		Logger.info('Using device code flow.');
+		// eslint-disable-next-line no-async-promise-executor
+		return new Promise(async (resolve, reject) => {
+			try {
+				const code_verifier = generators.codeVerifier();
+				const code_challenge = generators.codeChallenge(code_verifier);
+				const deviceAuthorizationResponse = await this.client.deviceAuthorization({
+					scope: `openid ${scopes}`,
+					code_challenge,
+					code_challenge_method: 'S256'
+				},
+				{
+					exchangeBody: {
+						code_verifier
+					}
+				}
+				);
+
+				const uriToOpen = await vscode.env.asExternalUri(vscode.Uri.parse(deviceAuthorizationResponse.verification_uri_complete));
+				await vscode.env.openExternal(uriToOpen);
+	
+				const tokenSet = await vscode.window.withProgress<TokenSet>({
+					location: vscode.ProgressLocation.Notification,
+					cancellable: true,
+					title: 'Waiting for device code authorization'
+				}, async (_, token) => {
+					Logger.info(`Polling for ${deviceAuthorizationResponse.expires_in}`);
+					const tokenSet = await deviceAuthorizationResponse.poll();
+					return tokenSet;
+				});
+				const token = this.convertToken(tokenSet!, scopes);
+				this.setToken(token, scopes);
+				const session = await this.convertToSession(token);
+
+				resolve(session);
+			} catch (e:any) {
+				Logger.error(e.message);
+				reject(e.message);
+			}
+		});
+	}
+
+
+	public async createSession(scopes: string): Promise<vscode.AuthenticationSession> {
+		Logger.info(`Logging in ${this.config.authUrl}...`);
+		if (this.extensionHost == ExtensionHost.Local && !this.config.deviceCodeOnly) 
+			return this.createSessionAuthCodeFlow(scopes);
+		return this.createSessionDeviceCodeFlow(scopes);
 	}
 
 	public error(response: ServerResponse, error: any): void {
