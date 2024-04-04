@@ -60,7 +60,7 @@ export interface RedHatAuthenticationSession extends vscode.AuthenticationSessio
 export class RedHatAuthenticationService {
 
 	private _tokens: IToken[] = [];
-	private _refreshTimeouts: Map<string, NodeJS.Timeout> = new Map<string, NodeJS.Timeout>();
+	private _refreshTimeouts: Map<string, ReturnType<typeof setTimeout>> = new Map<string, ReturnType<typeof setTimeout>>();
 	//private _uriHandler: UriEventHandler;
 	private _disposables: vscode.Disposable[] = [];
 	private client: Client;
